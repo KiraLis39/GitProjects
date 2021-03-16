@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.util.TimeZone;
 
 import javax.swing.JOptionPane;
-import javax.swing.UIManager;
-import javax.swing.plaf.nimbus.NimbusLookAndFeel;
 
 import fox.adds.IOM;
 import fox.adds.Out;
@@ -35,27 +33,7 @@ public class MainClass {
 		buildIOM();
 		loadResources();
 		
-//		try{UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-//		} catch (Exception e){System.err.println("Couldn't get specified look and feel, for some reason.");}
-		if (IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_UI_STYLE)) {
-			try {UIManager.setLookAndFeel(new NimbusLookAndFeel());
-		    } catch (Exception e) {System.err.println("Couldn't get specified look and feel, for some reason.");}
-		}
-		
-		String user = null;
-		while (user == null || user.isBlank()) {
-			user = getUserData();
-			if (user == null || user.isBlank()) {
-				JOptionPane.showConfirmDialog(null, 
-						"<html>Вы не поняли.<br>Здесь необходимо указать своё имя.<br>Или хотя бы никнейм..", "Вы не поняли?", 
-						JOptionPane.PLAIN_MESSAGE, JOptionPane.QUESTION_MESSAGE);
-			}
-		}
-		new ChatFrame(user);
-	}
-
-	private static String getUserData() {
-		return JOptionPane.showInputDialog(null, "Введите свой никнейм:", "Данные пользователя:", JOptionPane.QUESTION_MESSAGE);
+		new ChatFrame();
 	}
 
 	private static void checkFilesExists() {
@@ -82,16 +60,34 @@ public class MainClass {
 
 	private static void buildIOM() {
 		IOM.add(IOM.HEADERS.CONFIG, new File("./resources/user/config.cfg"));
-		
-//		IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.RENDER_ON, value);
-		
+
+		Media.setSoundEnabled(IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.SOUNDS_ENABLED));
 	}
 	
-	private static void loadResources() {
+	private static void loadResources() {		
 		try {
+			ResManager.add("requestImage", new File("./resources/images/requestImage.png"));
+			
 			ResManager.add("cur_0", new File("./resources/images/0.png"));
-			ResManager.add("cur_1", new File("./resources/images/1.png"));		
-		} catch (Exception e) {e.printStackTrace();}
+			ResManager.add("cur_1", new File("./resources/images/1.png"));
+			
+			ResManager.add("grass", new File("./resources/images/grass.png"));
+			ResManager.add("userListEdge", new File("./resources/images/userListEdge.png"));
+			ResManager.add("onlineImage", new File("./resources/images/onlineImage.png"));
+			ResManager.add("offlineImage", new File("./resources/images/offlineImage.png"));
+			ResManager.add("resetIPButtonImage", new File("./resources/images/resetIPButtonImage.png"));
+			ResManager.add("sendButtonImage", new File("./resources/images/DEFAULT/btn.png"));
+			
+			ResManager.add("switchOffImage", new File("./resources/images/switchOff.png"));
+			ResManager.add("switchOffoverImage", new File("./resources/images/switchOffover.png"));
+			ResManager.add("switchOnImage", new File("./resources/images/switchOn.png"));
+			ResManager.add("switchOnoverImage", new File("./resources/images/switchOnover.png"));
+		} catch (Exception e) {
+			JOptionPane.showConfirmDialog(null, "<HTML>Произошла ошибка<br>при загрузке ресурсов!<br>", e.getMessage(), 
+					JOptionPane.PLAIN_MESSAGE, JOptionPane.WARNING_MESSAGE);
+//			e.printStackTrace();
+			System.exit(11);
+		}
 		
 		try {
 			File[] sounds = new File("./resources/sounds/").listFiles(new FileFilter() {

@@ -8,43 +8,53 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 
+import door.Message.MessageDTO;
+import door.Message.MessageDTO.GlobalMessageType;
+import fox.adds.IOM;
+import fox.adds.Out;
 import gui.ChatFrame;
-import gui.ChatFrame.messageType;
 import media.Media;
+import registry.IOMs;
 import registry.Registry;
 import subGUI.MenuBar;
 
 
 public class NetConnector extends Thread {
+	public enum localMessageType {OUTPUT, INPUT, INFO, WARN}
 	public enum connState {DISCONNECTED, CONNECTING, CONNECTED}
 	private static connState state = connState.DISCONNECTED;
 	
+	private static Thread self;
 	private static Socket socket;
 	private static DataInputStream dis;
 	private static DataOutputStream dos;
+	private static String tmp_login;
+	private static char[] tmp_pass;
 	
 	
-	public NetConnector() {
+	public NetConnector(String login, char[] pass) {
 		super(new Runnable() {
 			@Override
 			public void run() {
 				setCurrentState(connState.CONNECTING);
 				
 				try {
+					Out.Print(NetConnector.class, 1, "Trying to create socket with data: " + MenuBar.getIP() + ": " + MenuBar.getPort());
 					socket = new Socket(MenuBar.getIP(), MenuBar.getPort());
 					System.out.println("Client socket up");
 					
+					Out.Print(NetConnector.class, 1, "Trying to create data IO-streams by clients socket...");
 					dis = new DataInputStream(socket.getInputStream());
 					dos = new DataOutputStream(socket.getOutputStream());
-					dos.writeUTF("/ADD " + Registry.myNickName + " " + MenuBar.getIP() + ":" + MenuBar.getPort());
-					setCurrentState(connState.CONNECTED);					
+					setCurrentState(connState.CONNECTED);
 					
-					String message;
+					// waiting for new income message:
+					String income;
 					while (true) {
-						message = dis.readUTF();
-						System.out.println("Client recieve: " + message);						
-						ChatFrame.sendMessage(message, messageType.INPUT); // /from SERVER: 123
+						income = dis.readUTF();
+						onMessageRecieved(MessageDTO.convertFromJson(income));
 					}
 				} catch (ConnectException e) {
 					System.out.println("\nНет соединения с сервером на клиенте (" + e.getMessage() + ").");
@@ -58,54 +68,96 @@ public class NetConnector extends Thread {
 //					ChatFrame.sendMessage("Потеряно соединения с сервером!", messageType.WARN);
 					disconnect();
 //					e.printStackTrace();
+				} catch (UnknownHostException e) {
+					e.printStackTrace();
+//					setCurrentState(connState.DISCONNECTED);
 				} catch (IOException e) {
 					e.printStackTrace();
 //					setCurrentState(connState.DISCONNECTED);
 				}
-				
 			}
 		});
+	
+		tmp_login = login;
+		tmp_pass = pass;
+		self = this;
 	}
 	
-	public static void reConnect() {
-//		Out.Print(ChatFrame.class, 1, "NetConnector.reConnect(): Try to connect...");
-		new NetConnector().start();
+	public static void reConnect(String login, char[] pass) {
+		Out.Print(ChatFrame.class, 1, "NetConnector.reConnect(): Try to connect with login '" + login + "' and pass '" + new String(pass) + "'...");
+		new NetConnector(login, pass).start();
 	}
 	
 	
-	public static boolean writeMessage(String message) {
-		if (dos == null) {return false;}
+	public static boolean writeMessage(MessageDTO message) {
+		if (dos == null || socket == null || socket.isClosed()) {			
+			try {
+				System.out.println("Reconnecting...");
+				reConnect(tmp_login, tmp_pass);
+			} catch (Exception e) {
+				System.out.println("Не удалось отправить сообщение по причине: " + e.getMessage());
+				return false;
+			}
+		}
+		
+		if (dos == null || socket == null || socket.isClosed()) {return false;}
 		
 		try {
-//			dos.writeUTF("/ADD " + Registry.myNickName + " " + MenuBar.getIP() + ":" + MenuBar.getPort());
-			dos.writeUTF(message);
+			dos.writeUTF(message.convertToJson());
 			return true;
-		} catch (IOException e) {
-//			e.printStackTrace();
-			System.out.println("Не удалось отправить сообщение по причине: " + e.getMessage());
+		} catch (Exception e) {
+			e.printStackTrace();
 			return false;
 		}
 	}
 	
+	private static void onMessageRecieved(MessageDTO incomeDTO) {
+		System.out.println("Client: NetConnector().onMessageRecieved(): message = " + incomeDTO.toString());
+
+		if (incomeDTO.getMessageType() == GlobalMessageType.AUTH_REQUEST) {
+			try {dos.writeUTF(new MessageDTO(GlobalMessageType.AUTH_REQUEST, tmp_login, new String(tmp_pass), "SERVER", System.currentTimeMillis()).convertToJson());
+			} catch (IOException e) {e.printStackTrace();}	
+		} else if (incomeDTO.getMessageType() == GlobalMessageType.CONFIRM_MESSAGE) {ChatFrame.addMessage(incomeDTO, localMessageType.INPUT);
+		} else if (incomeDTO.getMessageType() == GlobalMessageType.REJECT_MESSAGE) {
+			ChatFrame.addMessage(incomeDTO, localMessageType.INPUT);
+			setCurrentState(connState.DISCONNECTED);
+		}
+		
+		if (incomeDTO.getMessageType() == GlobalMessageType.USERLIST_MESSAGE) {
+//			System.out.println("Users list: " + Arrays.toString(userList));
+			for (String userName : incomeDTO.getBody().split(",")) {
+				if (userName.equals(Registry.myNickName)) {continue;}
+				ChatFrame.addUserToList(userName);
+			}
+			return;
+		}
+		
+//		System.out.println("NetConnector: onMessageRecieved(): Client recieve: " + incomeDTO.toString());
+		ChatFrame.addMessage(incomeDTO, localMessageType.INPUT);	
+	}
+
 	
+	public static connState getCurrentState() {return state;}
 	private static void setCurrentState(connState _state) {
+		if (state == _state) {return;}
+		Out.Print(NetConnector.class, 1, "Change connections state to " + _state);
 		state = _state;
 		
 		if (state == connState.CONNECTED) {
 			Media.playSound("connect");
-			MenuBar.setReconnectButton(MenuBar.textColor == Color.BLACK ? new Color(0.25f, 0.5f, 0.5f) : Color.BLACK, Color.GREEN, "Connected!");
-			ChatFrame.sendMessage("Соединение с сервером успешно установлено!", messageType.SYSTEM);
+			MenuBar.setReconnectButton(MenuBar.textColor == Color.BLACK ? new Color(0.25f, 0.5f, 0.5f) : Color.BLACK, Color.GREEN, "On-Line");
+			ChatFrame.addMessage("Соединение с сервером успешно установлено!", localMessageType.INFO);
+			
+			IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP, MenuBar.getIP());
+			IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT, MenuBar.getPort());
+//			IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN, Registry.myNickName);
 		} else if (state == connState.CONNECTING) {
-			MenuBar.setReconnectButton(MenuBar.textColor == Color.BLACK ? new Color(0.75f, 0.25f, 0.0f) : Color.DARK_GRAY, Color.BLACK, "Connecting");
+			MenuBar.setReconnectButton(MenuBar.textColor == Color.BLACK ? new Color(0.75f, 0.25f, 0.0f) : Color.DARK_GRAY, Color.BLACK, "Connect..");
 		} else {
 			Media.playSound("disconnect");
-			MenuBar.setReconnectButton(MenuBar.textColor == Color.BLACK ? new Color(0.75f, 0.5f, 0.5f) : Color.GRAY, Color.RED, "Disconnected");
-			ChatFrame.sendMessage("Соединение с сервером отсутствует!", messageType.SYSTEM);
+			MenuBar.setReconnectButton(MenuBar.textColor == Color.BLACK ? null : new Color(0.45f, 0.2f, 0.2f), Color.RED, "Off-Line"); // new Color(0.75f, 0.5f, 0.5f)
+			ChatFrame.addMessage("Соединение с сервером отсутствует!", localMessageType.WARN);
 		}
-	}
-
-	public static void incomeNewUser(String newUserName) {
-		ChatFrame.addUserToList(newUserName);
 	}
 
 	public static void disconnect() {
@@ -124,14 +176,6 @@ public class NetConnector extends Thread {
 	}
 
 	public static connState getNetState() {return state;}
-}
 
-//int tmp2 = 0;
-//while(true) {
-//	String test = "Connecting";
-//	for (int i = 0; i < tmp2; i++) {test += ".";}
-//	MenuBar.setConnBtnText(test);
-//	tmp2++;
-//	if (tmp2 > 3) {tmp2 = 0;}
-//	try {Thread.sleep(1000);} catch (InterruptedException e) {Thread.currentThread().interrupt();}
-//}
+	public static Thread getThread() {return self;}
+}

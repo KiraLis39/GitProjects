@@ -8,10 +8,9 @@ import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.AdjustmentEvent;
-import java.awt.event.AdjustmentListener;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 import java.awt.event.KeyEvent;
@@ -32,7 +31,6 @@ import javax.swing.DefaultListModel;
 import javax.swing.DefaultListSelectionModel;
 import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JMenuBar;
 import javax.swing.JOptionPane;
@@ -43,47 +41,51 @@ import javax.swing.border.EmptyBorder;
 
 import addings.ConstrainedViewPortLayout;
 import addings.VerticalFlowLayout;
+import door.Message.MessageDTO;
+import door.Message.MessageDTO.GlobalMessageType;
 import fox.adds.IOM;
 import fox.adds.Out;
 import fox.builders.ResManager;
 import fox.games.FoxCursor;
 import gui.ChatStyler.backgroundFillType;
+import gui.ChatStyler.uiStyleType;
 import media.Media;
 import net.NetConnector;
-import net.NetConnector.connState;
+import net.NetConnector.localMessageType;
 import registry.IOMs;
 import registry.Registry;
 import subGUI.BaloonPane;
+import subGUI.BaloonPane.Baloon;
+import subGUI.LoginFrame;
 
 
 @SuppressWarnings("serial")
 public class ChatFrame extends JFrame implements ActionListener, KeyListener, ComponentListener, MouseListener, MouseMotionListener {
-	public enum messageType {OUTPUT, INPUT, SYSTEM, WARN}
-
+//	private static SimpleDateFormat dateFormatTime = new SimpleDateFormat("HH:mm:ss");
+//	private static SimpleDateFormat dateFormatDay = new SimpleDateFormat("dd.MM.yyyy");
+	
 	private static BufferedImage[] sendButtonSprite;
-	private static BufferedImage bkgDefault;
 
 	private static JButton sendButton;
 	private static ChatFrame frame;
 	private static JTextArea inputArea;
 	private static JScrollPane inputScroll;
 	private static JScrollPane msgsScroll;
-	private static JPanel chatPanel, rightPane, leftPane;	
-	private JPanel midPane, basePane, correctPane;
+	private static JPanel chatPanel, rightPane, leftPane, downPane, midPane, correctPane;
+	static JPanel basePane;
 	
 	private static DefaultListModel<String> usersListModel;	
 	private static JList<String> usersList;
 
 	private Point frameWas, mouseWasOnScreen;
 	
-	private static boolean needUpdate = true;
+	private static boolean needUpdate = true, isFullscreen, dialogPaneOpacity;
 
 	private static Color mesColOutput = new Color(0.0f, 0.75f, 0.75f, 0.6f);
 	private static Color mesColInput = new Color(0.25f, 0.75f, 0.0f, 0.6f);
 	private static Color mesColWarn = new Color(1.0f, 0.0f, 0.0f, 0.6f);
 	private static Color mesColSystem = new Color(1.0f, 0.35f, 0.0f, 0.6f);
 	private static Color cSidePanelsBkg = new Color(0.0f, 0.0f, 0.0f, 0.6f);
-	private static Color uListBackColor;
 	
 	
 	@Override
@@ -97,33 +99,40 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 //		g2D.drawString(Registry.name + " v." + Registry.verse, 10, 18);		
 	}
 	
-	public ChatFrame(String nickName) {
+	public ChatFrame() {
 		frame = this;
-		Registry.myNickName = nickName;
 		init();
 		
 		setTitle(Registry.name + " v." + Registry.verse);
 		setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-		setMinimumSize(new Dimension(800, 920));
+		setMinimumSize(new Dimension(520, 600));
 
 		basePane = new JPanel(new BorderLayout()) {
 			@Override
 			public void paintComponent(Graphics g) {
 				Registry.render((Graphics2D) g);
-				if (ChatStyler.getFillType() == backgroundFillType.ASIS) {g.drawImage(bkgDefault, 0, 0, bkgDefault.getWidth(), bkgDefault.getHeight(), null);
-				} else if (ChatStyler.getFillType() == backgroundFillType.STRETCH) {g.drawImage(bkgDefault, 0, 0, getWidth(), getHeight(), null);
+				if (ResManager.getBImage("bkgDefault") == null) {return;}
+				
+				int bkgW = ResManager.getBImage("bkgDefault").getWidth(), bkgH = ResManager.getBImage("bkgDefault").getHeight();
+				Color itemBackColor = new Color(
+						ResManager.getBImage("bkgDefault").getColorModel().getRGB(
+								ResManager.getBImage("bkgDefault").getRaster().getDataElements(
+										bkgW - 3, bkgH / 2, null)));
+				g.setColor(itemBackColor);
+				g.fillRect(0, 0, getWidth(), getHeight());				
+				
+				if (ChatStyler.getFillType() == backgroundFillType.ASIS) {g.drawImage(ResManager.getBImage("bkgDefault"), 0, 0, bkgW, bkgH, null);
+				} else if (ChatStyler.getFillType() == backgroundFillType.STRETCH) {g.drawImage(ResManager.getBImage("bkgDefault"), 0, 0, getWidth(), getHeight(), null);
 				} else if (ChatStyler.getFillType() == backgroundFillType.PROPORTIONAL) {
-					int w1 = getWidth() / 2 - bkgDefault.getWidth() / 2;
-					int h1 = (getHeight() - 120) / 2 - bkgDefault.getHeight() / 2;					
-					g.drawImage(bkgDefault, w1, h1, bkgDefault.getWidth(), bkgDefault.getHeight(), null);
+					int w1 = getWidth() / 2 - bkgW / 2;
+					int h1 = (getHeight() - 120) / 2 - bkgH / 2;					
+					g.drawImage(ResManager.getBImage("bkgDefault"), w1, h1, bkgW, bkgH, null);
 				} else {
-					int tmpx = getWidth() / bkgDefault.getWidth();
-					int tmpy = getHeight() / bkgDefault.getHeight();
+					int tmpx = getWidth() / bkgW;
+					int tmpy = getHeight() / bkgH;
 					for (int i = 0; i < tmpy + 1; i++) {
 						for (int j = 0; j < tmpx + 1; j++) {
-							g.drawImage(bkgDefault, 
-									bkgDefault.getWidth() * j, bkgDefault.getHeight() * i, 
-									bkgDefault.getWidth(), bkgDefault.getHeight(), null);
+							g.drawImage(ResManager.getBImage("bkgDefault"), bkgW * j, bkgH * i, bkgW, bkgH, null);
 						}
 					}
 				}
@@ -141,9 +150,11 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 						chatPanel = new JPanel(new VerticalFlowLayout(2, 0, 0)) {
 							@Override
 							public void paintComponent(Graphics g) {
-								Registry.render((Graphics2D) g);
-								g.setColor(new Color(0.8f, 0.8f, 1.0f, 0.25f));
-								g.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
+								if (dialogPaneOpacity) {
+									Registry.render((Graphics2D) g);
+									g.setColor(new Color(0.4f, 0.4f, 0.5f, 0.5f));
+									g.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
+								}
 							}
 							
 							{
@@ -155,7 +166,6 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 						
 						msgsScroll = new JScrollPane(chatPanel) {
 							{
-//								setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.BLUE, 1, true), new EmptyBorder(0, 3, 3, 3)));
 								setViewportBorder(null);
 								
 								setBorder(null);
@@ -167,12 +177,6 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 								getVerticalScrollBar().setUnitIncrement(14);
 								getVerticalScrollBar().setAutoscrolls(true);
 								setHorizontalScrollBarPolicy(HORIZONTAL_SCROLLBAR_NEVER);
-								getVerticalScrollBar().addAdjustmentListener(new AdjustmentListener() {  
-							        public void adjustmentValueChanged(AdjustmentEvent e) {
-//							            e.getAdjustable().setValue(e.getAdjustable().getMaximum());  
-//							        	needUpdate = true;
-							        }
-							    }); 
 							}
 						};
 
@@ -200,9 +204,18 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 				};
 				
 				rightPane = new JPanel(new BorderLayout()) {
+					@Override
+					public void paintComponent(Graphics g) {
+						Registry.render((Graphics2D) g);
+						g.setColor(cSidePanelsBkg);
+						g.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
+
+						g.drawImage(ResManager.getBImage("userListEdge"), 0, 0, 32, getHeight(), this);
+					}
+					
 					{
 						setOpaque(false);
-						setBorder(new EmptyBorder(0, 0, 0, 1));
+						setBorder(new EmptyBorder(3, 24, 0, 3));
 						setVisible(IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.SHOW_USERS_PANEL));
 						
 						usersListModel = new DefaultListModel<String>();
@@ -215,13 +228,12 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 		                    }
 							
 							{
-								setBorder(new EmptyBorder(3, 3, 3, 3));
+								setOpaque(false);
 								
 								setSelectionMode(DefaultListSelectionModel.SINGLE_SELECTION);
-								setSelectionBackground(new Color(1.0f, 1.0f, 1.0f, 0.2f));
+								setSelectionBackground(new Color(0.7f, 0.8f, 0.85f, 0.1f));
 								setSelectionForeground(new Color(1.0f, 1.0f, 0.0f, 1.0f));
 								
-								setBackground(uListBackColor);
 								setForeground(Color.WHITE);
 								setFont(Registry.fUsers);
 //								setVisibleRowCount(5);
@@ -232,6 +244,7 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 										if (locationToIndex(e.getPoint()) != -1) {
 											rightPane.repaint();
 											inputArea.requestFocus();
+											clearSelection();
 										}
 									}
 									
@@ -258,7 +271,7 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 					}
 				};
 				
-				JPanel downPane = new JPanel(new BorderLayout(3, 3)) {
+				downPane = new JPanel(new BorderLayout(3, 3)) {
 					@Override
 					public void paintComponent(Graphics g) {
 						Registry.render((Graphics2D) g);
@@ -277,8 +290,13 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 					{
 						setOpaque(false);
 						setBorder(BorderFactory.createCompoundBorder(
-								new EmptyBorder(3, 3, 24, 3),
-								BorderFactory.createTitledBorder(null, "Ввод:", 1, 2, Registry.fMessage, Color.GRAY)
+								new EmptyBorder(0, 0, 26, 0),
+								BorderFactory.createCompoundBorder(
+										BorderFactory.createTitledBorder(
+												BorderFactory.createLineBorder(ChatStyler.getCurrentStyle() == uiStyleType.DARK ? Color.GRAY.darker() : Color.GRAY.brighter(), 1, true), 
+												"- Foxy Chat -", 3, 2, Registry.fMessage, Color.GRAY.darker()),
+										new EmptyBorder(-6, 0, 0, 0)
+										)
 								)
 						);
 //						setCursor(FoxCursor.createCursor(ResourceManager.getBufferedImage("cur_1"), "ansC"));
@@ -286,7 +304,7 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 						correctPane = new JPanel(new FlowLayout(0, 3, 3)) {
 							{
 								setOpaque(false);
-								setBorder(new EmptyBorder(-5, 0, -5, -5));
+								setBorder(new EmptyBorder(-3, -3, -3, 0));
 								setPreferredSize(new Dimension(0, 22));
 								
 								JButton music = new JButton("music") {
@@ -296,6 +314,7 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 										setPreferredSize(new Dimension(100, 24));
 										setActionCommand("music");
 										addActionListener(ChatFrame.this);
+										setFocusPainted(false);
 									}
 								};
 								JButton photo = new JButton("photo") {
@@ -305,6 +324,7 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 										setPreferredSize(new Dimension(100, 24));
 										setActionCommand("photo");
 										addActionListener(ChatFrame.this);
+										setFocusPainted(false);
 									}
 								};
 								JButton document = new JButton("document") {
@@ -314,6 +334,7 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 										setPreferredSize(new Dimension(100, 24));
 										setActionCommand("document");
 										addActionListener(ChatFrame.this);
+										setFocusPainted(false);
 									}
 								};
 								
@@ -331,6 +352,7 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 								setFont(Registry.fMessage);
 								setBorder(new EmptyBorder(0, 3, 0, 3));
 								setRequestFocusEnabled(true);
+//								setBackground(cSidePanelsBkg);
 							}
 						};
 						
@@ -346,13 +368,7 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 
 								getVerticalScrollBar().setUnitIncrement(9);
 								setHorizontalScrollBarPolicy(HORIZONTAL_SCROLLBAR_NEVER);
-//								getVerticalScrollBar().addAdjustmentListener(new AdjustmentListener() {
-//							        public void adjustmentValueChanged(AdjustmentEvent e) {
-//							            e.getAdjustable().setValue(e.getAdjustable().getMaximum());  
-//							        	needUpdate = true;
-//							        }
-//							    }); 
-								setPreferredSize(new Dimension(0, 50));
+								setPreferredSize(new Dimension(0, 45));
 							}
 						};
 						
@@ -416,42 +432,33 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 		addComponentListener(this);
 		addWindowListener(new WindowAdapter() {
 			@Override
-			public void windowClosing(WindowEvent e) {
-				Object[] options = { "Да", "Нет!" };
-				int n = JOptionPane.showOptionDialog(
-								e.getWindow(), "Закрыть окно?", "Подтверждение", 
-								JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, 
-								null, options, options[0]);
-				
-				if (n == 0) {disconnectAndExit();}
-			}
+			public void windowClosing(WindowEvent e) {exitRequest();}
 		});
 		addMouseListener(this);
 		addMouseMotionListener(this);
 		
 		setupInAc();
-		ChatStyler.loadUIStyle();
 
 		pack();
-		setSize(new Dimension(getWidth(), java.awt.Toolkit.getDefaultToolkit().getScreenSize().height));
+//		setSize(new Dimension(getWidth(), java.awt.Toolkit.getDefaultToolkit().getScreenSize().height));
 		setLocationRelativeTo(null);
 		setVisible(true);
-
-		NetConnector.incomeNewUser(Registry.myNickName);
 		
 		// поток обновления UI:
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
+				Media.playSound("launched");
+				
 				while (true) {
 					if (needUpdate) {
 						needUpdate = false;
 						rightPane.setPreferredSize(new Dimension(ChatFrame.this.getWidth() / 5, 0));
 						repaint();
 						
-//						try {Thread.sleep(50);} catch (InterruptedException e) {/* IGNORE SLEEP */}
+						try {Thread.sleep(50);} catch (InterruptedException e) {/* IGNORE SLEEP */}
 						
-						revalidateChatBaloonsPanel();						
+						revalidateChatBaloonsPanel();
 						repaint();
 						
 						inputArea.requestFocusInWindow();
@@ -461,11 +468,16 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 				}
 			}
 		}) {{start();}};
+	
+		if (IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN).equalsIgnoreCase("none")) {new LoginFrame();
+		} else {
+			Registry.myNickName = IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN);
+			NetConnector.reConnect(
+					IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN), 
+					IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_PASSWORD).toCharArray());
+		}
 		
-		// поток сетевого подключения:
-		NetConnector.reConnect();
-		
-		Media.playSound("launched");
+		setSidePanelsBkg(cSidePanelsBkg);
 	}
 
 	private void setupInAc() {
@@ -480,82 +492,190 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 		Registry.inAc.set("chat", "enterText", KeyEvent.VK_ENTER, KeyEvent.CTRL_DOWN_MASK, new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				sendMessage(inputArea.getText(), messageType.OUTPUT);
+				addMessage(inputArea.getText(), localMessageType.OUTPUT);
 				inputArea.requestFocusInWindow();
+			}
+		});
+		Registry.inAc.set("chat", "escape", KeyEvent.VK_ESCAPE, 0, new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				System.out.println(usersList.getSelectedValue());
+				inputArea.requestFocusInWindow();
+				usersList.clearSelection();
+				if (inputArea.getText().startsWith("/to ")) {
+					inputArea.setText(inputArea.getText().replace(inputArea.getText().split(": ")[0] + ": ", ""));
+				} else {exitRequest();}
 			}
 		});
 	}
 
 	private void init() {
-		try {
-			ResManager.add("grass", new File("./resources/images/grass.png"));
-			ResManager.add("connectButtonImage", new File("./resources/images/connectButtonImage.png"));
-			ResManager.add("sendButtonImage", new File("./resources/images/DEFAULT/btn.png"));
-		} catch (Exception e) {e.printStackTrace();}
-		
-		ChatStyler.setUIStyle(IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.UI_STYLE) == -1 ? 0 : IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.UI_STYLE));
-		ChatStyler.setBackgroundFillStyle(IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.BKG_DRAW_STYLE));
+		ChatStyler.setUIStyle(IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.UI_STYLE) == -1 ? 2 : IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.UI_STYLE));
+		ChatStyler.setBackgroundFillStyle(IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.BKG_DRAW_STYLE) == -1 ? 0 : IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.BKG_DRAW_STYLE));
+	
+		dialogPaneOpacity = IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_DIALOGPANE_OPACITY);
 	}
 
+	private void exitRequest() {
+		Object[] options = { "Да", "Нет!" };
+		int n = JOptionPane.showOptionDialog(this, "Закрыть окно?", "Подтверждение", 
+						JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, 	null, options, options[0]);		
+		if (n == 0) {disconnectAndExit();}
+	}
 	
-	public static void addUserToList(String newUserName) {usersListModel.addElement(newUserName);}
-
-	public static void sendMessage(String message, messageType type) {
-		if (message.isEmpty() || message.isBlank()) {return;}
-		String from = "System", to = Registry.myNickName;
+	public synchronized static void addMessage(String message, localMessageType type) {
+		addMessage(
+				new MessageDTO(
+						GlobalMessageType.SYSINFO_MESSAGE, "System", 
+						message, type == localMessageType.INFO || type == localMessageType.WARN ? Registry.myNickName : null, System.currentTimeMillis()), type);
+	}
+	
+	public synchronized static void addMessage(MessageDTO messageDTO, localMessageType type) {
+		if (messageDTO.getBody() == null || messageDTO.getBody().isBlank()) {return;}
+		
 		Color balloonColor = Color.WHITE;
 		boolean successfulSended = false;
-
+		
+		if (messageDTO.getBody().startsWith("/to ")) {
+			messageDTO.setTo(messageDTO.getBody().split(": ")[0].replace("/to ", ""));
+			messageDTO.setBody(messageDTO.getBody().substring(messageDTO.getBody().indexOf(": ") + 2, messageDTO.getBody().length()));
+		}
+		
+		if (messageDTO.getTo() == null) {
+			if (type == localMessageType.INPUT) {
+				messageDTO.setTo(Registry.myNickName);
+				messageDTO.setMessageType(GlobalMessageType.PRIVATE_MESSAGE);
+			} else {
+				messageDTO.setTo("Всем");
+				messageDTO.setMessageType(GlobalMessageType.PUBLIC_MESSAGE);
+			}
+		} else {messageDTO.setMessageType(GlobalMessageType.PRIVATE_MESSAGE);}
+		
+		
+		if (type == localMessageType.OUTPUT) {
+			balloonColor = mesColOutput;
+			messageDTO.setFrom(Registry.myNickName);
+			messageDTO.setTimestamp(System.currentTimeMillis());
+			
+			successfulSended = NetConnector.writeMessage(messageDTO);
+			if (successfulSended) {
+				Media.playSound("messageSend");
+				inputArea.setText(null);
+			} else {
+				messageDTO.setBody("(Не отправлено) " + messageDTO.getBody());
+				type = localMessageType.INFO;
+				balloonColor = mesColSystem;
+				Media.playSound("systemError");
+			}
+		}
+		
 		switch (type) {
-			case WARN: 		
+			case WARN:		
 				balloonColor = mesColWarn;
 				Media.playSound("systemError");
 				break;
-			case SYSTEM: 	
+				
+			case INFO: 	
 				balloonColor = mesColSystem;
 				Media.playSound("systemError");
 				break;
-			case INPUT: // /from SERVER: 123
-				if (message.startsWith("/from ")) {
-					if (message.split(": ").length > 1) {
-						from = message.split(": ")[0].replace("/from ", "");
-						message = message.split(": ")[1];
-					}
-				}
-				balloonColor = mesColInput;
+				
+			case INPUT:
+				balloonColor = mesColInput;				
+				if (!messageDTO.getFrom().equals("SERVER") && !usersListModel.contains(messageDTO.getFrom())) {addUserToList(messageDTO.getFrom());}
 				Media.playSound("messageReceive");
 				break;
-			case OUTPUT: 	
-				balloonColor = mesColOutput;
 				
-				if (NetConnector.getNetState() == connState.CONNECTED) {
-					if (message.startsWith("/to ")) {
-						if (message.split(": ").length > 1) {
-							to = message.split(": ")[0].replace("/to ", "");
-							message = message.split(": ")[1];
-						}
-					} else {to = "Всем";}
-
-					inputArea.setText(null);
-					successfulSended = NetConnector.writeMessage(message);					
-				}
-				
-				Media.playSound("messageSend");
-				break;
-			default:	
+			default:	System.err.println("ChatFrame:addMessage(): Unknown type income: " + type);
 		}
 
-		if ((type == messageType.OUTPUT && successfulSended) || type == messageType.INPUT) {addChatBaloon(type, message, from, to, balloonColor);
-		} else {
-			if (type == messageType.SYSTEM || type == messageType.WARN) {addChatBaloon(type, message, from, to, balloonColor);				
-			} else {addChatBaloon(messageType.WARN, "Не отправлено: " + message, from, to, mesColWarn);}
-		}
-
-		scrollDown();
+		addChatBaloon(type, messageDTO, balloonColor);
+	}
+	
+	private static void addChatBaloon(localMessageType inputOrOutput, MessageDTO mesDTO, Color balloonColor) {
+		if (mesDTO.getBody() == null || mesDTO.getBody().isBlank()) {return;}
 		
-		needUpdate = true;
+		BaloonPane newBaloon = new BaloonPane(inputOrOutput, mesDTO, balloonColor);
+		chatPanel.add(newBaloon);
+		chatPanel.add(Box.createVerticalStrut(3));
+		
+		revalidateBaloon(newBaloon);
+		
+		scrollDown();
+		needUpdate = true;		
 	}
 
+
+	private synchronized static void revalidateChatBaloonsPanel() {
+		for (Component bc : chatPanel.getComponents()) {
+			if (bc instanceof BaloonPane) {revalidateBaloon((BaloonPane) bc);}
+		}
+	}
+	
+	private synchronized static void revalidateBaloon(BaloonPane baloonPane) {
+		Baloon baloon = baloonPane.getBaloon();
+		Double baloonHeight = calculateBaloonSize(baloon, msgsScroll.getSize().getWidth() - 19D - 20D); // Registry.ffb.getStringHeight(baloon.getGraphics(), baloon.getAreaText()) + 6D
+		
+		baloonPane.setPreferredSize(new Dimension((int) (msgsScroll.getSize().getWidth() - 19D), baloonHeight.intValue()));
+		baloonPane.revalidate();
+	}
+	
+	private synchronized static Double calculateBaloonSize(Baloon baloon, Double maxWindowWidth) {
+		baloon.setPreferredSize(new Dimension(maxWindowWidth.intValue(), baloon.getPreferredSize().height));
+		
+		String maxLine = "";
+		String message = baloon.getAreaText();
+		for (String line : message.split("\n")) {
+			if (line.length() > maxLine.length()) {maxLine = line;}
+		}
+		
+		Double headerWidthWithSpaces = Registry.ffb.getStringWidth(baloon.getGraphics(), baloon.getHeaderText()) + 28D;
+		Double maxLineWidth = Registry.ffb.getStringWidth(baloon.getArea().getGraphics(), maxLine) + 38D;
+		
+		if (maxWindowWidth > headerWidthWithSpaces) {
+			
+			if (headerWidthWithSpaces > maxLineWidth) {
+				baloon.setPreferredSize(new Dimension(headerWidthWithSpaces.intValue(), baloon.getPreferredSize().height));
+			} else {
+				
+				if (maxLineWidth < maxWindowWidth) {
+					baloon.setPreferredSize(new Dimension(maxLineWidth.intValue(), baloon.getPreferredSize().height));
+				}
+			}
+			
+		} else {/* НИЧЕГО МЕНЯТЬ НЕ НУЖНО */}
+		
+		baloon.revalidate();
+		
+		if (isFullscreen) {return baloon.getPreferredSize().getHeight();	
+		} else {return baloon.getPreferredSize().getHeight() * 1.8D;}
+
+//		String label = baloon.getHeaderText();
+//		Double labelWidth = Registry.ffb.getStringWidth(baloon.getGraphics(), label) * 0.75D;
+//		Double maxLineWidth = Registry.ffb.getStringWidth(baloon.getGraphics(), maxLine) + 36D;
+//		
+//		if (maxLineWidth < maxWidth) {
+//			if (maxLineWidth > labelWidth) {baloon.setPreferredSize(new Dimension(maxLineWidth.intValue(), baloon.getPreferredSize().height));
+//			} else {baloon.setPreferredSize(new Dimension(labelWidth.intValue(), baloon.getPreferredSize().height));}
+//		}
+
+//		Double messageWidth = Registry.ffb.getStringWidth(baloon.getGraphics(), message);
+//		Double lineHeight = Registry.ffb.getStringHeight(baloon.getGraphics(), maxLine) + 1.8D;
+		
+//		int nlCount = message.split("\n").length - 1;
+//		height += (nlCount * lineHeight);
+//		height += (int) (messageWidth / maxWidth * lineHeight);
+//		baloon.setPreferredSize(new Dimension(baloon.getPreferredSize().width, height.intValue()));
+		
+/*
+Я не уверен, что есть метод лучше, чем тот, который вы упомянули. Проблема в том, что в общем случае вычитание прямоугольной 
+области из другой оставит дыру где-то посередине, поэтому результат на самом деле не прямоугольник. В вашем случае вы знаете, что 
+панель задач умещается точно на одной из сторон прямоугольника экрана, поэтому «лучший» способ действительно выяснить, 
+с какой стороны она находится, и вычесть ширину / высоту с этой стороны.
+*/
+	}
+	
+	
 	private static void scrollDown() {
 		new Thread(new Runnable() {
 			@Override
@@ -569,94 +689,15 @@ public class ChatFrame extends JFrame implements ActionListener, KeyListener, Co
 		msgsScroll.revalidate();
 	}
 	
-	private static void addChatBaloon(messageType type, String message, String from, String to, Color balloonColor) {
-		chatPanel.add(new BaloonPane(type, message, from, to, balloonColor));
-		chatPanel.add(Box.createVerticalStrut(3));	
+	public static void addUserToList(String newUserName) {
+		newUserName = newUserName.replace("[", "").replace("]", "");
+		
+		if (!usersListModel.contains(newUserName)) {
+			usersListModel.addElement(newUserName);
+			rightPane.repaint();
+		}		
 	}
 	
-	private void revalidateChatBaloonsPanel() {
-		for (Component bc : chatPanel.getComponents()) {
-			BaloonPane bPane;
-			Double baloonHeight = 75D;
-			
-			if (bc instanceof BaloonPane) {
-				bPane = (BaloonPane) bc;
-				
-				for (Component baloon : bPane.getComponents()) {
-					if (baloon instanceof JPanel && baloon.getName().equals("baloon")) {
-						
-						// набираем начальные переменные:
-						String areaText = null, labelText = null;
-						Double lineHeight = 0D;
-						JTextArea a = null;
-						
-						for (Component c : ((JPanel) baloon).getComponents()) {
-							if (c instanceof JTextArea) {
-								a = ((JTextArea) c);
-								areaText = a.getText();
-								lineHeight = Registry.ffb.getStringHeight(a.getGraphics(), areaText) + 6D;
-							} else if (c instanceof JLabel) {
-								labelText = ((JLabel) c).getText();
-								labelText += bPane.getHeaderText();
-							}
-						}
-						
-						// рассчитываем размеры баллона:						
-						if (areaText != null && labelText != null) {
-							// устанавливаем размеры панели баллона:
-							baloonHeight = calculateBaloonSize(baloon, msgsScroll.getSize().getWidth() - 19D - 20D, a, areaText, labelText, lineHeight);
-							baloon.revalidate();
-						}
-					}
-				}
-				
-				bPane.setPreferredSize(new Dimension((int) (msgsScroll.getSize().getWidth() - 19D), baloonHeight.intValue()));
-//				bPane.setOpaque(true);
-//				bPane.setBackground(Color.BLUE);
-//				repaint();
-			}
-		}
-	}
-	
-	private Double calculateBaloonSize(Component baloon, Double maxWidth, JTextArea area, String message, String label, Double textHeight) {
-		int height = 72;
-		int nlCount = message.split("\n").length - 1;
-		 // по умолчанию, ширина: длина баллона на все окно, высота: на одну строку текста + два лейбла.
-		baloon.setPreferredSize(new Dimension(maxWidth.intValue(), height));
-		
-		String maxLine = "";
-		for (String line : message.split("\n")) {
-			if (line.length() > maxLine.length()) {maxLine = line;}
-		}
-		
-		// WIDTH:
-		Double labelWidth = Registry.ffb.getStringWidth(area.getGraphics(), label) * 0.75D;
-		Double maxLineWidth = Registry.ffb.getStringWidth(area.getGraphics(), maxLine) + 36D;
-		if (maxLineWidth < maxWidth) {
-			if (maxLineWidth > labelWidth) {baloon.setPreferredSize(new Dimension(maxLineWidth.intValue(), height));
-			} else {baloon.setPreferredSize(new Dimension(labelWidth.intValue(), height));}
-		}
-		
-		// HEIGHT:
-		Double messageWidth = Registry.ffb.getStringWidth(area.getGraphics(), message);
-		Double lineHeight = Registry.ffb.getStringHeight(area.getGraphics(), maxLine) + 1.8D;
-		
-		height += (nlCount * lineHeight);
-		height += (int) (messageWidth / maxWidth * lineHeight);
-		baloon.setPreferredSize(new Dimension(baloon.getPreferredSize().width, height));
-/*
-Player models can also be requested by the server, just set your "model" console variable to the desired model to download and wait for 2 map changes.
-If you already have set it before connecting it will only take one map change. If the server has the requested player model your client will download it.
-
-Я не уверен, что есть метод лучше, чем тот, который вы упомянули. Проблема в том, что в общем случае вычитание прямоугольной 
-области из другой оставит дыру где-то посередине, поэтому результат на самом деле не прямоугольник. В вашем случае вы знаете, что 
-панель задач умещается точно на одной из сторон прямоугольника экрана, поэтому «лучший» способ действительно выяснить, 
-с какой стороны она находится, и вычесть ширину / высоту с этой стороны.
-*/
-		// возвращаем новую высоту родительского baloonPane: 
-		return (double) height;
-	}
-
 	public static void disconnectAndExit() {
 		NetConnector.disconnect();
 		IOM.saveAll();
@@ -666,9 +707,13 @@ If you already have set it before connecting it will only take one map change. I
 	
 	// UTILITES:
 	public static void saveChatToFile() {
-		
+		zaglushko();
 	}
 	
+	public static void zaglushko() {
+		JOptionPane.showConfirmDialog(frame, "Еще не реализовано...", "Прастити", JOptionPane.PLAIN_MESSAGE, JOptionPane.INFORMATION_MESSAGE);
+	}
+
 	public static void switchLeftPaneVisible() {
 		leftPane.setVisible(!leftPane.isVisible());
 		needUpdate = true;
@@ -696,31 +741,29 @@ If you already have set it before connecting it will only take one map change. I
 	
 	
 	// GETS & SETS:
-	public static void setSendButtonSprite(BufferedImage[] spritelist) {
-		sendButtonSprite = spritelist;
-//		sendButton.repaint();
-	}
-	public static void setBackgroundImage(BufferedImage bkgImage) {
-		bkgDefault = bkgImage;
+	public static void setSendButtonSprite(BufferedImage[] spritelist) {sendButtonSprite = spritelist;}
+	public static void setBackgroundImage(BufferedImage bkgImage, String bkgPath) {
+		try {
+			ResManager.remove("bkgDefault");
+			ResManager.add("bkgDefault", new File(bkgPath));
+		} catch (Exception e) {e.printStackTrace();}
+		
+		IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.BKG_PATH, bkgPath);
 		frame.repaint();
 	}
 	public static void setSidePanelsBkg(Color color) {
 		cSidePanelsBkg = color;
-//		rightPane.repaint();
-//		leftPane.repaint();
+		try {usersList.setBackground(color);			
+		} catch (Exception e) {cSidePanelsBkg = color;}
 	}
 	public static void setupMenuBar(JMenuBar mBar) {frame.setJMenuBar(mBar);}
-	public static void setUsersListBackground(Color color) {
-		try {usersList.setBackground(color);			
-		} catch (Exception e) {uListBackColor = color;}
-	}
 	
 	
 	// LISTENERS:
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		switch (e.getActionCommand()) {
-			case "send": sendMessage(inputArea.getText(), messageType.OUTPUT);
+			case "send": addMessage(inputArea.getText(), localMessageType.OUTPUT);
 				break;
 				
 			case "music": choseMusicToSend();
@@ -740,7 +783,13 @@ If you already have set it before connecting it will only take one map change. I
 	public void keyTyped(KeyEvent e) {}
 	
 	@Override
-	public void componentResized(ComponentEvent e) {needUpdate = true;}
+	public void componentResized(ComponentEvent e) {
+		if (frame.getSize().getWidth() >= Toolkit.getDefaultToolkit().getScreenSize().getWidth()) {isFullscreen = true;
+		} else {isFullscreen = false;}
+		
+		revalidateChatBaloonsPanel();
+		needUpdate = true;
+	}
 
 	public void componentMoved(ComponentEvent e) {}
 	public void componentShown(ComponentEvent e) {}
@@ -764,4 +813,10 @@ If you already have set it before connecting it will only take one map change. I
 	public void mouseReleased(MouseEvent e) {}
 	public void mouseEntered(MouseEvent e) {}
 	public void mouseExited(MouseEvent e) {}
+
+	public static void setDialogOpacity(boolean dpOpacity) {
+		dialogPaneOpacity = dpOpacity;
+		IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_DIALOGPANE_OPACITY, dpOpacity);
+		chatPanel.repaint();
+	}
 }

@@ -1,19 +1,31 @@
 package gui;
 
+import java.awt.AWTException;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.MenuItem;
+import java.awt.PopupMenu;
+import java.awt.SystemTray;
+import java.awt.TrayIcon;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.WindowAdapter;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
-import java.util.LinkedHashMap;
+import java.awt.event.WindowListener;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.LinkedList;
 import java.util.Map.Entry;
 
+import javax.imageio.ImageIO;
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -23,80 +35,88 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.Document;
 
+import door.Message.MessageDTO;
+import door.Message.MessageDTO.GlobalMessageType;
 import fox.builders.FoxFontBuilder;
 import fox.builders.FoxFontBuilder.FONT;
+import server.ClientHandler;
+import server.Server;
 
 
 @SuppressWarnings("serial")
-public class MonitorFrame extends JFrame {	
+public class MonitorFrame extends JFrame implements WindowListener {	
 	private static FoxFontBuilder ffb = new FoxFontBuilder();	
 	
-	private static LinkedHashMap<String, String> comsMap = new LinkedHashMap<String, String> () {
-		{
-			put("/?", "Выводит список всех доступных в консоли команд (см. 'help')");
-			put("/help", "Выводит список всех доступных в консоли команд (см. '?')");	
-			
-			put("/view", "Выводит список всех активных подлючений (клиентов) (см. 'show')");
-			put("/show", "Выводит список всех активных подлючений (клиентов) (см. 'view')");
-			
-			put("/reset", "Отключает всех клиентов и очищает список их подключений");
-			put("/exit", "Полностью останавливает и закрывает приложение сервера");
-			put("/stop", "Отключает всех клиентов и останавливает выполнение сервера (не закрывая его)");
-			put("/start", "Запускает сервер (если он был остановлен)");
-			
-			put("/bc <MESSAGE>", "Отправка глобального сообщения");	
-			put("/say <MESSAGE>", "Отправка сообщения пользователю (клиенту)");	
-		}
-	};
+	private static TrayIcon trayIcon;
+	private static SystemTray systemTray = SystemTray.getSystemTray();
+	private static LinkedList<String> messageHistory = new LinkedList<String>();
 	
-	private static JLabel connectsLabel, statusLabel, lastRecMes;
+	private static JLabel connectsLabel, statusLabel, onlineLabel;
 	private static JTextArea console;
+	private static JScrollPane conScroll;
 	private static JTextField inputField;
 	
-	private Font consoleFont = ffb.setFoxFont(FONT.CONSOLAS, 14, false);	
+	private Font consoleFont = ffb.setFoxFont(FONT.CONSOLAS, 14, false);
+	private int historyMarker = 0;
 	
 	
 	public MonitorFrame() {
 		setTitle("FChat server monitor:");
 		setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 		setAlwaysOnTop(true);
-		setMinimumSize(new Dimension(300, 130));
+		setMinimumSize(new Dimension(360, 130));
 		
 		JPanel upPane = new JPanel(new BorderLayout()) {
 			{
 
-				JPanel infoPane = new JPanel(new GridLayout(3, 4)) {
+				JPanel infoPane = new JPanel(new GridLayout(1, 2, 3, 0)) {
 					{
-						setBorder(new EmptyBorder(3, 3, 3, 3));
-						setBackground(Color.DARK_GRAY);
+						setBorder(new EmptyBorder(3, 0, 3, 0));
+						setBackground(Color.BLACK);
 						
-						add(new JLabel("On-Line:") {{setForeground(Color.WHITE);}});
-						statusLabel = new JLabel("false") {{setHorizontalAlignment(JLabel.LEFT); setForeground(Color.WHITE);}};
-						add(statusLabel);
-						add(new JLabel(/* RESERVED */));
-						add(new JLabel(/* RESERVED */));
+						JPanel infoPaneStatus = new JPanel(new GridLayout(2, 2, 3, 3)) {
+							{
+								setOpaque(false);
+								setBorder(BorderFactory.createCompoundBorder(
+										BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.DARK_GRAY, 1, true), "Status:", 1, 2, consoleFont, Color.GRAY),
+										new EmptyBorder(-6, 3, 6, 0)));
+								
+								add(new JLabel("Active:") {{setForeground(Color.WHITE);}});
+								statusLabel = new JLabel("n/a") {{setHorizontalAlignment(JLabel.LEFT); setForeground(Color.WHITE);}};
+								add(statusLabel);
+								
+								add(new JLabel("On-Line:") {{setForeground(Color.WHITE);}});
+								onlineLabel = new JLabel("" + Server.getAccess().isNetAccessible()) {{setHorizontalAlignment(JLabel.LEFT);}};
+								add(onlineLabel);
+							}
+						};
 						
-						add(new JLabel("Connections:") {{setForeground(Color.WHITE);}});
-						connectsLabel = new JLabel("" + Server.getConnectionsCount()) {{setHorizontalAlignment(JLabel.LEFT); setForeground(Color.WHITE);}};
-						add(connectsLabel);
-						add(new JLabel(/* RESERVED */));
-						add(new JLabel(/* RESERVED */));
+						JPanel infoPaneData = new JPanel(new GridLayout(2, 2, 3, 3)) {
+							{
+								setOpaque(false);
+								setBorder(BorderFactory.createCompoundBorder(
+										BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.DARK_GRAY, 1, true), "Data:", 1, 2, consoleFont, Color.GRAY),
+										new EmptyBorder(-6, 3, 6, 0)));
+								
+								add(new JLabel("Connections:") {{setForeground(Color.WHITE);}});
+								connectsLabel = new JLabel("" + Server.getAccess().getConnectionsCount()) {{setHorizontalAlignment(JLabel.LEFT);}};
+								add(connectsLabel);
+								
+								add(new JLabel("-"));						
+								add(new JLabel("-"));
+							}
+						};
 						
-						lastRecMes = new JLabel(Server.getLastRecievedMessage()) {{setHorizontalAlignment(JLabel.LEFT); setForeground(Color.WHITE);}};
-						add(new JLabel("Last recieved:") {{setForeground(Color.WHITE);}});
-						add(lastRecMes);						
-						add(new JLabel(/* RESERVED */));
-						add(new JLabel(/* RESERVED */));
+						add(infoPaneStatus);
+						add(infoPaneData);
 					}
 				};
 				
-				JPanel downButtonsPane = new JPanel(new BorderLayout()) {
+				JPanel downButtonsPane = new JPanel(new BorderLayout(0, 0)) {
 					{
-						setBackground(Color.DARK_GRAY);
-						setBorder(new EmptyBorder(3, 0, 0, 0));
+						setBackground(Color.BLACK);
+						setBorder(new EmptyBorder(0, 1, 0, 1));
 						
 						JButton resetLineBtn = new JButton("Отключить всех!") {
 							{
@@ -115,11 +135,15 @@ public class MonitorFrame extends JFrame {
 								setFocusPainted(false);
 								setBackground(new Color(0.5f, 0.0f, 0.0f, 1.0f));
 								setForeground(Color.WHITE);
+								setToolTipText("<HTML>Запустить или остановить сервер.<br>Shift+click - завершение работы.");
 								addActionListener(new ActionListener() {
 									@Override	
 									public void actionPerformed(ActionEvent e) {
-										if (Server.getConnectionAlive()) {stopRequest();
-										} else {new Server();}
+										if (e.getModifiers() == 17) {exitRequest();
+										} else {
+											if (Server.getAccess().getConnectionAlive()) {stopRequest();//											
+											} else {Server.getAccess().start();}
+										}
 									}
 								});
 							}
@@ -145,14 +169,13 @@ public class MonitorFrame extends JFrame {
 				};
 					
 				add(infoPane, BorderLayout.CENTER);
-				add(downButtonsPane, BorderLayout.NORTH);
+				add(downButtonsPane, BorderLayout.SOUTH);
 			}
 		};
 		
 		console = new JTextArea() {
 			{
 				setBorder(new EmptyBorder(3,3,3,3));
-				setPreferredSize(new Dimension(700, 300));
 				setBackground(Color.BLACK);
 				setForeground(Color.GREEN);
 				setFont(consoleFont);
@@ -161,12 +184,23 @@ public class MonitorFrame extends JFrame {
 				setCaretColor(Color.YELLOW);
 				getCaret().setBlinkRate(250);
 				setEditable(false);
+				addKeyListener(new KeyAdapter() {
+					@Override
+					public void keyPressed(KeyEvent e) {
+						if (!e.isControlDown()) {
+							inputField.requestFocusInWindow();
+							inputField.setText(inputField.getText() + e.getKeyChar());
+						}
+					}
+				});
 			}
 		};
 		
-		JScrollPane conScroll = new JScrollPane(console) {
+		conScroll = new JScrollPane(console) {
 			{
 				setBorder(null);
+				setPreferredSize(new Dimension(450, 300));
+				setAutoscrolls(true);
 			}
 		};
 		
@@ -186,22 +220,43 @@ public class MonitorFrame extends JFrame {
 						addKeyListener(new KeyAdapter() {
 							@Override
 							public void keyPressed(KeyEvent e) {
-								if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-									String cmd = getText();
-									if (cmd.startsWith("/")) {
-										cmd = cmdEngine(cmd);
-										if (cmd != null) {toConsole(cmd);}
-										setText(null);
-									}
+								switch (e.getKeyCode()) {
+									case KeyEvent.VK_ENTER:
+										String cmd = getText();
+										if (cmd.startsWith("/")) {
+											updateHistoryArray(cmd);
+											cmd = cmdEngine(cmd);
+											if (cmd != null) {toConsole(cmd);}											
+											setText(null);
+										}
+									break;
+										
+									case KeyEvent.VK_UP: 
+										if (messageHistory.size() > 0) {setText(messageHistory.get(historyMarker));}
+										if (historyMarker > 0) {historyMarker--;}
+									break;
+										
+									case KeyEvent.VK_DOWN: 
+										if (messageHistory.size() > 0) {setText(messageHistory.get(historyMarker));}
+										if (historyMarker < messageHistory.size() - 1) {historyMarker++;}
+									break;
+										
+									default:
 								}
 							}
 							
+							private void updateHistoryArray(String cmd) {
+								messageHistory.add(cmd);
+								if (messageHistory.size() > 64) {System.out.println("Removed from history by max size (64): " + messageHistory.removeFirst());}
+								historyMarker = messageHistory.size() - 1;
+							}
+
 							private String cmdEngine(String cmd) {
 								if (cmd.equalsIgnoreCase("/help") || cmd.equalsIgnoreCase("/?")) {
 									printCommandsList();
 									return null;
 								} else if (cmd.equalsIgnoreCase("/stop")) {
-									if (Server.getConnectionAlive()) {stopRequest();
+									if (Server.getAccess().getConnectionAlive()) {stopRequest();
 									} else {return "Сервер уже остановлен!";}
 									return null;
 								} else if (cmd.equalsIgnoreCase("/exit")) {
@@ -214,22 +269,44 @@ public class MonitorFrame extends JFrame {
 									resetRequest();
 									return null;
 								} else if (cmd.startsWith("/bc ")) {
-									// broadcasting entered message...
+									Server.getAccess().broadcast(GlobalMessageType.PUBLIC_MESSAGE, null, cmd.replace("/bc ", ""), false);
 								} else if (cmd.startsWith("/say ")) {
-									// send to <client> entered message...
+									cmd = cmd.replace("/say ", "");
+									String to = cmd.substring(0, cmd.indexOf(" ")), message = cmd.substring(to.length() + 1, cmd.length());
+									Server.getAccess().getClient(to).say(new MessageDTO(GlobalMessageType.PRIVATE_MESSAGE, "SERVER", message, System.currentTimeMillis()));
 								} else if (cmd.equalsIgnoreCase("/start")) {
-									if (!Server.getConnectionAlive()) {new Server();
+									if (!Server.getAccess().getConnectionAlive()) {Server.getAccess().start();
 									} else {return "Сервер уже запущен!";}
+									return null;
+								} else if (cmd.equalsIgnoreCase("/info")) {
+									printInfo();
 									return null;
 								} else {return "Команда " + cmd + " не зарегистрирована.";}
 								
 								return cmd;
 							}
 
+							private void printInfo() {
+								toConsole("\n*** *** *** ***");
+								toConsole("Server FoxyChat:");
+								
+								toConsole("\t* * * * * Server IP:\t\t" + Server.getAccess().getIP());
+								toConsole("\t* * * * * Server port:\t\t" + Server.getAccess().getPort());
+								toConsole("\t* * * * * Host name:\t\t" + Server.getAccess().getHostName());
+								toConsole("\t* * * * * Net access:\t\t" + Server.getAccess().isNetAccessible());
+								toConsole("\t* * * * * Clients count:\t" + Server.getAccess().getConnectionsCount());
+								
+								for (Entry<String, ClientHandler> client : Server.getAccess().getConnections()) {
+									toConsole("\t " + client.getKey() + ": " + client.getValue().toString());
+								}
+								
+								toConsole("*** *** *** ***\n");
+							}
+
 							private void printCommandsList() {
 								toConsole("\n*** *** *** ***");
 								toConsole("COMMANDS LISTING:");
-								for (Entry<String, String> comItem : comsMap.entrySet()) {
+								for (Entry<String, String> comItem : Server.getCommandsMapSet()) {
 									toConsole(comItem.getKey() + "\t (" + comItem.getValue() + ");");
 								}
 								toConsole("*** *** *** ***\n");
@@ -246,21 +323,75 @@ public class MonitorFrame extends JFrame {
 		add(conScroll, BorderLayout.CENTER);
 		add(inputPane, BorderLayout.SOUTH);
 		
-		addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent e) {exitRequest();}
-		});
+		
+		try {
+			BufferedImage trayIconImage = ImageIO.read(new File("tray.png"));
+			trayIcon = new TrayIcon(trayIconImage, "FCServer");
+			trayIcon.setImageAutoSize(true);
+			trayIcon.setPopupMenu(new PopupMenu() {
+				{
+					add(new MenuItem("Start") {
+				    	{
+				    		addActionListener(new ActionListener() {
+						    	public void actionPerformed(ActionEvent e) {Server.getAccess().start();}
+						    });
+				    	}
+					});
+					add(new MenuItem("Reset") {
+				    	{
+				    		addActionListener(new ActionListener() {
+						    	public void actionPerformed(ActionEvent e) {resetRequest();}
+						    });
+				    	}
+					});
+					add(new MenuItem("Stop") {
+				    	{
+				    		addActionListener(new ActionListener() {
+						    	public void actionPerformed(ActionEvent e) {stopRequest();}
+						    });
+				    	}
+					});
+					add(new MenuItem("Close") {
+				    	{
+				    		addActionListener(new ActionListener() {
+						    	public void actionPerformed(ActionEvent e) {exitRequest();}
+						    });
+				    	}
+					});
+				}
+			});
+			trayIcon.addMouseListener(new MouseAdapter() {
+				@Override
+				public void mouseClicked(MouseEvent e) {
+					if (e.getClickCount() >= 2) {traying(false);}
+				}
+
+				@Override
+				public void mouseEntered(MouseEvent e) {
+					
+				}
+
+				@Override
+				public void mouseExited(MouseEvent e) {
+					
+				}
+			});
+		} catch (IOException e) {e.printStackTrace();}
+		
+		addWindowListener(this);
 		
 		pack();
 		setLocationRelativeTo(null);
 		setVisible(true);
+		
+		Server.getAccess().start();
 		
 		new Thread(new Runnable() {
 			@Override	public void run() {
 				while (true) {
 					updateOnlineStatus();
 					updateConnectionsCount();
-					updateLastMessageText();
+					updateActiveStatus();
 					try {	Thread.sleep(500);} catch (InterruptedException e) {e.printStackTrace();}
 				}
 			}
@@ -271,10 +402,10 @@ public class MonitorFrame extends JFrame {
 	private void exitRequest() {
 		Object[] options = { "Да", "Нет!" };
 		int n = JOptionPane.showOptionDialog(this, 
-						"<HTML>Завершить работу сервера,<br>разорвав все активные соединения?<br>(активных: " + Server.getConnectionsCount() + ")", 
+						"<HTML>Завершить работу сервера,<br>разорвав все активные соединения?<br>(активных: " + Server.getAccess().getConnectionsCount() + ")", 
 						"Внимание!", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);				
 		if (n == 0) {
-			Server.disconnect();
+			Server.getAccess().stop();
 			System.exit(0);
 		}
 	}
@@ -282,44 +413,85 @@ public class MonitorFrame extends JFrame {
 	private void stopRequest() {
 		Object[] options = {"Да", "Нет!"};
 		int n = JOptionPane.showOptionDialog(MonitorFrame.this, 
-						"<HTML>Остановить работу сервера?<br>(активных: " + Server.getConnectionsCount() + ")", 
+						"<HTML>Остановить работу сервера?<br>(активных: " + Server.getAccess().getConnectionsCount() + ")", 
 						"Внимание!", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);	
 		
-		if (n == 0) {Server.serverStop();}
+		if (n == 0) {Server.getAccess().stop();}
 	}
 	
 	private void resetRequest() {
 		Object[] options = {"Да", "Нет!"};
 		int n = JOptionPane.showOptionDialog(MonitorFrame.this, 
-						"<HTML>Разорвать все активные соединения?<br>(активных: " + Server.getConnectionsCount() + ")", 
+						"<HTML>Разорвать все активные соединения?<br>(активных: " + Server.getAccess().getConnectionsCount() + ")", 
 						"Внимание!", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);	
 		
-		if (n == 0) {Server.resetConnections();}
+		if (n == 0) {Server.getAccess().resetConnections();}
 	}
 	
 	
 	private void printClientsList() {
 		toConsole("Clients on-line:");
-		for (Entry<String, ClientHandler> client : Server.getConnections()) {
+		for (Entry<String, ClientHandler> client : Server.getAccess().getConnections()) {
 			toConsole(client.getKey() + ": " + client.getValue().toString());
 		}
 		toConsole("*** *** ***");
 	}
 	
-	public static void toConsole(String string) {
-//		console.append("> " + string + "\n");
-		Document doc = console.getDocument();
-		if (doc != null) {
-		    try {doc.insertString(doc.getLength(), "> " + string + "\n", null);
-		    } catch (BadLocationException e) {}
-		}
+	public synchronized static void toConsole(String string) {
+		console.append("> " + string + "\n");
+		scrollDown();
 	}
 
-	
-	public static void updateOnlineStatus() {
-		statusLabel.setText("" + Server.getConnectionAlive());
-		statusLabel.setForeground(Server.getConnectionAlive() ? Color.GREEN : Color.RED);
+	private static void scrollDown() {
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {Thread.sleep(200);} catch (Exception e) {/* SLEEP IGNORE */}
+				int current = conScroll.getVerticalScrollBar().getValue();
+				int max = conScroll.getVerticalScrollBar().getMaximum();
+				if (current < max) {conScroll.getVerticalScrollBar().setValue(max);}
+				console.repaint();
+			}
+		}).start();
 	}
-	public static void updateConnectionsCount() {connectsLabel.setText("" + Server.getConnectionsCount());}
-	public static void updateLastMessageText() {lastRecMes.setText("" + Server.getLastRecievedMessage());}
+	
+	public static void updateActiveStatus() {
+		statusLabel.setText("" + Server.getAccess().getConnectionAlive());
+		statusLabel.setForeground(Server.getAccess().getConnectionAlive() ? Color.GREEN : Color.RED);
+	}
+	public static void updateOnlineStatus() {
+		onlineLabel.setText("" + Server.getAccess().isNetAccessible());
+		onlineLabel.setForeground(Server.getAccess().isNetAccessible() ? Color.GREEN : Color.RED);
+	}
+	public static void updateConnectionsCount() {
+		connectsLabel.setText("" + Server.getAccess().getConnectionsCount());
+		connectsLabel.setForeground(Server.getAccess().getConnectionsCount() < Server.getAccess().getMaxClientsAllowed() ? Color.GREEN : Color.RED);
+	}
+
+
+	private void traying(boolean hide) {
+		if (hide) {
+			try {
+				systemTray.add(trayIcon);
+				setVisible(false);
+				trayIcon.displayMessage("FCServer:", "I`am here! (click to restore)", TrayIcon.MessageType.INFO);
+			} catch (AWTException e1) {e1.printStackTrace();}
+		} else {
+			setVisible(true);
+			systemTray.remove(trayIcon);
+		}
+	}
+		
+
+	@Override
+	public void windowClosing(WindowEvent e) {traying(true);}
+
+	@Override
+	public void windowIconified(WindowEvent e) {traying(true);}
+	
+	public void windowOpened(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowActivated(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
 }

@@ -16,7 +16,7 @@ import subGUI.MenuBar;
 
 public class ChatStyler {
 	public enum uiStyleType {DEFAULT, GOLD, DARK}
-	private static uiStyleType uiStyle = uiStyleType.DEFAULT;
+	private static uiStyleType uiStyle = uiStyleType.DARK;
 	public enum backgroundFillType {STRETCH, FILL, ASIS, PROPORTIONAL}
 	private static backgroundFillType bFillType = backgroundFillType.STRETCH;
 	
@@ -24,7 +24,7 @@ public class ChatStyler {
 	public static void setBackgroundFillStyle(int bkgStyleIndex) {
 		bFillType = backgroundFillType.values()[bkgStyleIndex];
 		IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.BKG_DRAW_STYLE, bFillType.ordinal());
-//		frame.repaint();
+		if (ChatFrame.basePane != null) ChatFrame.basePane.repaint();
 	}
 
 	public static void setUIStyle(uiStyleType style) {setUIStyle(style.ordinal());}
@@ -45,10 +45,12 @@ public class ChatStyler {
 			e.printStackTrace();
 		}
 		
+		File f;
 		try {
-			ChatFrame.setBackgroundImage(ImageIO.read(new File("./" + IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.BKG_PATH))));
+			f = new File(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.BKG_PATH));
+			ChatFrame.setBackgroundImage(ImageIO.read(f), f.getCanonicalPath());
 		} catch (IOException e) {
-			try {ChatFrame.setBackgroundImage(ImageIO.read(new File("./resources/images/bkgDefault.png")));
+			try {ChatFrame.setBackgroundImage(ImageIO.read(new File("./resources/images/backgrounds/bkgDefault.png")), "./resources/images/backgrounds/bkgDefault.png");
 			} catch (IOException e1) {e1.printStackTrace();};
 		}
 		
@@ -58,20 +60,16 @@ public class ChatStyler {
 		ChatFrame.setupMenuBar(null);
 		if (uiStyle == uiStyleType.DEFAULT) {
 			ChatFrame.setupMenuBar(new MenuBar(Color.BLACK).getMenu());
-			ChatFrame.setSidePanelsBkg(new Color(1.0f, 1.0f, 1.0f, 0.4f));
-			ChatFrame.setUsersListBackground(new Color(1.0f, 1.0f, 1.0f, 0.4f));
+			ChatFrame.setSidePanelsBkg(new Color(0.45f, 0.5f, 0.55f, 0.75f));
 		} else {
 			ChatFrame.setupMenuBar(new MenuBar(Color.WHITE).getMenu());
-			ChatFrame.setSidePanelsBkg(new Color(0.0f, 0.0f, 0.0f, 0.6f));
-			ChatFrame.setUsersListBackground(new Color(0.0f, 0.0f, 0.0f, 0.6f));
+			ChatFrame.setSidePanelsBkg(new Color(0.1f, 0.1f, 0.1f, 0.75f));
 		}
 		
 		ChatFrame.setSendButtonSprite(Registry.fsc.addSpritelist("sendButtonSprite", ResManager.getBImage("sendButtonImage"), 1, 3));
 	}
 
-	public static void loadUIStyle() {
-		
-	}
+	public static backgroundFillType getFillType() {return bFillType;}
 
-	public static backgroundFillType getFillType() {return bFillType;}	
+	public static uiStyleType getCurrentStyle() {return uiStyle;}	
 }

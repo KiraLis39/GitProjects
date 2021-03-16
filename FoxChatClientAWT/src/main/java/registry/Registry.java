@@ -12,7 +12,7 @@ import fox.games.FoxSpritesCombiner;
 
 public class Registry {
 	public static String name = "FoxyChat"; 
-	public static String verse = "0.0.1.8"; 
+	public static String verse = "0.0.2.1"; 
 	public static String autor = "KiraLis39";
 	public static String mail = "AngelicaLis39@mail.ru";
 	public static String company = "@Multiverse_39 group, 2021";
@@ -29,9 +29,10 @@ public class Registry {
 	
 	public static Font fMenuBar = Registry.ffb.setFoxFont(FoxFontBuilder.FONT.CANDARA, 12, false);
 	public static Font fMenuBarBig = Registry.ffb.setFoxFont(FoxFontBuilder.FONT.ARIAL_NARROW, 16, true);
+	public static Font fBigSphere = Registry.ffb.setFoxFont(FoxFontBuilder.FONT.SEGOE_UI_SYMBOL, 18, true);
 	
 	public static void render(Graphics2D g2D) {
-		if (IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.RENDER_ON)) {		
+		if (IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.RENDER_ON)) {
 			g2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 			g2D.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_NORMALIZE);
 			g2D.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
