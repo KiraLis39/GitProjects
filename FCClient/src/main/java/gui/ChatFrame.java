@@ -29,6 +29,7 @@ import java.io.File;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -42,10 +43,8 @@ import javax.swing.ListSelectionModel;
 import javax.swing.UIManager;
 import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
-import javax.swing.plaf.nimbus.NimbusLookAndFeel;
 
-import addings.ConstrainedViewPortLayout;
-import addings.VerticalFlowLayout;
+import door.Exit;
 import door.Message.MessageDTO;
 import door.Message.MessageDTO.GlobalMessageType;
 import fox.adds.IOM;
@@ -53,6 +52,7 @@ import fox.adds.InputAction;
 import fox.adds.Out;
 import fox.builders.FoxFontBuilder;
 import fox.builders.ResManager;
+import fox.components.VerticalFlowLayout;
 import fox.games.FoxCursor;
 import gui.ChatStyler.backgroundFillType;
 import gui.ChatStyler.uiStyleType;
@@ -64,35 +64,31 @@ import registry.IOMs;
 import registry.Registry;
 import subGUI.BaloonBack;
 import subGUI.BaloonBack.Baloon;
-import subGUI.LoginFrame;
 
 
 @SuppressWarnings("serial")
 public class ChatFrame extends JFrame implements ActionListener, MouseListener, MouseMotionListener {
-//	private static SimpleDateFormat dateFormatTime = new SimpleDateFormat("HH:mm:ss"); // ("dd.MM.yyyy")
-	private Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+	private static Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
 	private static BufferedImage[] sendButtonSprite;
 
-	private static JButton sendButton;
 	private static ChatFrame frame;
 	private static JTextArea inputArea;
-	private static JScrollPane inputScroll;
-	private static JScrollPane msgsScroll;
-	private static JPanel chatPanel, rightPane, leftPane, downPane, midPane, correctPane;
-	static JPanel basePane;
+	private static JScrollPane inputScroll, msgsScroll;
+	private static JPanel basePane, chatPanel, rightPane, leftPane, downPane, midPane, correctPane;
+	private static JButton sendButton;
 	
 	private static DefaultListModel<String> usersListModel;	
 	private static JList<String> usersList;
 
 	private Point frameWas, mouseWasOnScreen;
 	
-	private static boolean needUpdate = true, isBusy, isFullscreen, dialogPaneOpacity;
+	private static boolean needUpdate = true, isBusy, isFullscreen;
 
+	private static Color cSidePanelsBkg = new Color(0.0f, 0.0f, 0.0f, 0.6f);
+	private static Color mesColSystem = new Color(1.0f, 0.35f, 0.0f, 0.6f);
 	private static Color mesColOutput = new Color(0.0f, 0.75f, 0.75f, 0.6f);
 	private static Color mesColInput = new Color(0.25f, 0.75f, 0.0f, 0.6f);
 	private static Color mesColWarn = new Color(1.0f, 0.0f, 0.0f, 0.6f);
-	private static Color mesColSystem = new Color(1.0f, 0.35f, 0.0f, 0.6f);
-	private static Color cSidePanelsBkg = new Color(0.0f, 0.0f, 0.0f, 0.6f);
 	
 	
 	@Override
@@ -170,10 +166,10 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 						setOpaque(false);
 						setBorder(new EmptyBorder(0, 3, 1, 3));
 
-						chatPanel = new JPanel(new VerticalFlowLayout(2, 0, 0)) {
+						chatPanel = new JPanel(new VerticalFlowLayout(VerticalFlowLayout.BOTTOM, 0, 0)) {
 							@Override
 							public void paintComponent(Graphics g) {
-								if (dialogPaneOpacity) {
+								if (IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_DIALOGPANE_OPACITY)) {
 									Registry.render((Graphics2D) g);
 									g.setColor(new Color(0.4f, 0.4f, 0.5f, 0.5f));
 									g.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
@@ -196,7 +192,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 								getViewport().setOpaque(false);
 								setAutoscrolls(true);
 								
-								getViewport().setLayout(new ConstrainedViewPortLayout());
+//								getViewport().setLayout(new ConstrainedViewPortLayout());
 								getVerticalScrollBar().setUnitIncrement(14);
 								getVerticalScrollBar().setAutoscrolls(true);
 								setHorizontalScrollBarPolicy(HORIZONTAL_SCROLLBAR_NEVER);
@@ -241,6 +237,9 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 						setBorder(new EmptyBorder(3, 16, 1, 3));
 						setVisible(IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.SHOW_USERS_PANEL));
 						
+						
+						UIManager.put("List.dropCellBackground", UIManager.getColor(Color.GREEN));
+						UIManager.put("List.background", UIManager.getColor(Color.GREEN));
 						usersListModel = new DefaultListModel<String>();
 						usersList = new JList<String>(usersListModel) {
 							@Override
@@ -254,12 +253,14 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 								setOpaque(false);
 								
 								setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+//								setBackground(new Color(0.7f, 0.8f, 0.85f, 0.1f));
 								setSelectionBackground(new Color(0.7f, 0.8f, 0.85f, 0.1f));
-								setSelectionForeground(new Color(1.0f, 1.0f, 0.0f, 1.0f));
+								setSelectionForeground(new Color(1.0f, 1.0f, 1.0f));
 								
 								setForeground(Color.WHITE);
 								setFont(Registry.fUsers);
 //								setVisibleRowCount(5);
+								setCellRenderer(new TransparentListCellRenderer());
 								
 								addMouseListener(new MouseAdapter() {
 									@Override
@@ -492,8 +493,6 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 				switchFullscreen();
 			}
 		});
-		
-		setupInAc();
 
 		pack();
 		setLocationRelativeTo(null);
@@ -556,26 +555,15 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		// поток фоновых фич:
 		(new Thread(new SubController()){{setDaemon(true);}}).start();
 		
+		setupInAc();
 		setSidePanelsBkg(cSidePanelsBkg);
-		userChecker();
+		connecting();
 	}
 
-	private static void userChecker() {
-		if (IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN).equalsIgnoreCase("none")) {new LoginFrame();
-		} else {
-			NetConnector.reConnect(
-					IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN), 
-					IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_PASSWORD).toCharArray());
-		}
-		
-		if (IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_UI_STYLE)) {
-			try {UIManager.setLookAndFeel(new NimbusLookAndFeel());
-//				UIManager.setLookAndFeel("com.jgoodies.plaf.plastic.PlasticXPLookAndFeel");
-		    } catch (Exception e) {
-		    	try{UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-				} catch (Exception e2){System.err.println("Couldn't get specified look and feel, for some reason.");}
-			}
-		}
+	private static void connecting() {
+		NetConnector.reConnect(
+				IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER), 
+				IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_PASSWORD).toCharArray());
 	}
 
 	private void setupInAc() {
@@ -597,12 +585,12 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		InputAction.set("chat", "escape", KeyEvent.VK_ESCAPE, 0, new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				System.out.println(usersList.getSelectedValue());
-				inputArea.requestFocusInWindow();
 				usersList.clearSelection();
 				if (inputArea.getText().startsWith("/to ")) {
 					inputArea.setText(inputArea.getText().replace(inputArea.getText().split(": ")[0] + ": ", ""));
 				} else {exitRequest();}
+				
+				inputArea.requestFocusInWindow();
 			}
 		});
 		InputAction.set("chat", "fullscreen", KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK, new AbstractAction() {
@@ -614,7 +602,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 			}
 		});
 		
-		InputAction.set("chat", "update_1", KeyEvent.VK_0, InputEvent.CTRL_DOWN_MASK, new AbstractAction() {
+		InputAction.set("chat", "update", KeyEvent.VK_0, InputEvent.CTRL_DOWN_MASK, new AbstractAction() {
 			@Override	public void actionPerformed(ActionEvent e) {needUpdate = true;}
 		});
 	}
@@ -622,57 +610,12 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	private static void init() {
 		ChatStyler.setUIStyle(IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.UI_STYLE) == -1 ? 2 : IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.UI_STYLE));
 		ChatStyler.setBackgroundFillStyle(IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.BKG_DRAW_STYLE) == -1 ? 0 : IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.BKG_DRAW_STYLE));
-	
-		dialogPaneOpacity = IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_DIALOGPANE_OPACITY);
-	}
-
-	private void switchFullscreen() {
-		if (isFullscreen) {
-			if (frame.getSize().getWidth() >= screen.getWidth() && frame.isUndecorated()) {return;}
-			
-			isFullscreen = true;
-			frame.dispose();
-			frame.setUndecorated(true);
-			frame.setState(MAXIMIZED_BOTH);
-			frame.setSize(screen);
-			
-			frame.setLocationRelativeTo(null);
-			frame.setVisible(true);
-			
-			needUpdate = true;
-		} else {
-			if (frame.getSize().getWidth() < screen.getWidth() && !frame.isUndecorated()) {return;}
-			
-			isFullscreen = false;
-			frame.dispose();
-			frame.setUndecorated(false);
-			frame.setState(NORMAL);
-			
-//			frame.pack();
-			frame.setSize(frame.getMinimumSize());
-			frame.setLocationRelativeTo(null);
-			frame.setVisible(true);
-			
-			needUpdate = true;
-		}
 	}
 	
-	private void exitRequest() {
-		Object[] options = { "Да", "Нет!" };
-		int n = JOptionPane.showOptionDialog(this, "Закрыть окно?", "Подтверждение", 
-						JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, 	null, options, options[0]);		
-		if (n == 0) {disconnectAndExit();}
-	}
 	
-/*
-Я не уверен, что есть метод лучше, чем тот, который вы упомянули. Проблема в том, что в общем случае вычитание прямоугольной области из другой оставит дыру где-то посередине, поэтому результат на самом деле не прямоугольник.
-В вашем случае вы знаете, что панель задач умещается точно на одной из сторон прямоугольника экрана, поэтому «лучший» способ действительно выяснить, с какой стороны она находится, и вычесть ширину / высоту с этой стороны.
-*/
+	// MESSAGE SYSTEM:
 	public synchronized static void addMessage(String message, localMessageType type) {
-		addMessage(
-				new MessageDTO(
-						GlobalMessageType.SYSINFO_MESSAGE, "System", 
-						message, type == localMessageType.INFO || type == localMessageType.WARN ? IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN) : null, System.currentTimeMillis()), type);
+		addMessage(new MessageDTO(GlobalMessageType.SYSINFO_MESSAGE, "System", message, (type == localMessageType.INFO || type == localMessageType.WARN) ? IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER) : null, System.currentTimeMillis()), type);
 	}
 	
 	public synchronized static void addMessage(MessageDTO messageDTO, localMessageType type) {
@@ -688,7 +631,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		
 		if (messageDTO.getTo() == null) {
 			if (type == localMessageType.INPUT) {
-				messageDTO.setTo(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN));
+				messageDTO.setTo(IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER));
 				messageDTO.setMessageType(GlobalMessageType.PRIVATE_MESSAGE);
 			} else {
 				messageDTO.setTo("Всем");
@@ -701,7 +644,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 			NetConnector.setAfk(false);
 			
 			balloonColor = mesColOutput;
-			messageDTO.setFrom(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN));
+			messageDTO.setFrom(IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER));
 			messageDTO.setTimestamp(System.currentTimeMillis());
 			
 			successfulSended = NetConnector.writeMessage(messageDTO);
@@ -729,7 +672,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 				
 			case INPUT:
 				balloonColor = mesColInput;				
-				if (!messageDTO.getFrom().equals("SERVER") && !usersListModel.contains(messageDTO.getFrom())) {addUserToList(messageDTO.getFrom());}
+//				if (!messageDTO.getFrom().equals("SERVER") && !usersListModel.contains(messageDTO.getFrom())) {addUserToList(messageDTO.getFrom());}
 				Media.playSound("messageReceive");
 				break;
 				
@@ -740,6 +683,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	}
 	
 	private static void addChatBaloon(localMessageType inputOrOutput, MessageDTO mesDTO, Color balloonColor) {
+		if (chatPanel == null) {return;}
 		if (mesDTO.getBody() == null || mesDTO.getBody().isBlank()) {return;}
 		
 		BaloonBack newBaloonBack = new BaloonBack(inputOrOutput, mesDTO, balloonColor);
@@ -782,25 +726,44 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 				canPlaceColumn = (int) (maxPlace / FoxFontBuilder.getStringWidth(baloon.getArea().getGraphics(), "W")) - 6;
 				baloon.getArea().setColumns(canPlaceColumn);
 			} else {
-				canPlaceColumn = (int) (bodyWidth / FoxFontBuilder.getStringWidth(baloon.getArea().getGraphics(), "W")) - 0;
+				canPlaceColumn = (int) (bodyWidth / FoxFontBuilder.getStringWidth(baloon.getArea().getGraphics(), "W"));
 				baloon.getArea().setColumns(canPlaceColumn);
 			}
 		}		
 		baloon.revalidate();
 	}
 	
-	
-	private static void scrollDown() {
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				try {Thread.sleep(250);} catch (Exception e) {/* SLEEP IGNORE */}
-				int current = msgsScroll.getVerticalScrollBar().getValue();
-				int max = msgsScroll.getVerticalScrollBar().getMaximum();
-				if (current < max) {msgsScroll.getVerticalScrollBar().setValue(max);}
-			}
-		}).start();
-		msgsScroll.revalidate();
+		
+	// UTILITES:
+	private static void switchFullscreen() {
+		if (isFullscreen) {
+			if (frame.getSize().getWidth() >= screen.getWidth() && frame.isUndecorated()) {return;}
+			
+			isFullscreen = true;
+			frame.dispose();
+			frame.setUndecorated(true);
+			frame.setState(MAXIMIZED_BOTH);
+			frame.setSize(screen);
+			
+			frame.setLocationRelativeTo(null);
+			frame.setVisible(true);
+			
+			needUpdate = true;
+		} else {
+			if (frame.getSize().getWidth() < screen.getWidth() && !frame.isUndecorated()) {return;}
+			
+			isFullscreen = false;
+			frame.dispose();
+			frame.setUndecorated(false);
+			frame.setState(NORMAL);
+			
+//			frame.pack();
+			frame.setSize(frame.getMinimumSize());
+			frame.setLocationRelativeTo(null);
+			frame.setVisible(true);
+			
+			needUpdate = true;
+		}
 	}
 	
 	public static void addUserToList(String newUserName) {
@@ -812,22 +775,16 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		}		
 	}
 	
-	public static void disconnectAndExit() {
-		NetConnector.disconnect();
-		IOM.saveAll();
-		System.exit(0);
+	public static void updateUserList(String[] users) {
+		usersListModel.removeAllElements(); // or marked it off-line is better?..
+		
+		for (String userName : users) {
+			if (userName.equals(IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER))) {continue;}
+			addUserToList(userName);
+		}		
 	}
 	
-	
-	
-	// UTILITES:
-	public static void saveChatToFile() {
-		zaglushko();
-	}
-	
-	public static void zaglushko() {
-		JOptionPane.showConfirmDialog(frame, "Еще не реализовано...", "Прастити", JOptionPane.PLAIN_MESSAGE, JOptionPane.INFORMATION_MESSAGE);
-	}
+	public static void saveChatToFile() {zaglushko();}
 
 	public static void switchLeftPaneVisible() {
 		leftPane.setVisible(!leftPane.isVisible());
@@ -841,19 +798,41 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.SHOW_USERS_PANEL, rightPane.isVisible());
 	}
 
-	
-	private static void choseMusicToSend() {
-		zaglushko();
+	private static void scrollDown() {
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {Thread.sleep(250);} catch (Exception e) {/* SLEEP IGNORE */}
+				int current = msgsScroll.getVerticalScrollBar().getValue();
+				int max = msgsScroll.getVerticalScrollBar().getMaximum();
+				if (current < max) {msgsScroll.getVerticalScrollBar().setValue(max);}
+			}
+		}).start();
+		msgsScroll.revalidate();
 	}
 	
-	private static void chosePhotoToSend() {
-		zaglushko();
+	
+	private static void choseMusicToSend() {zaglushko();}
+	
+	private static void chosePhotoToSend() {zaglushko();}
+	
+	private static void choseDocumentToSend() {zaglushko();}
+	
+	
+	public static void zaglushko() {
+		JOptionPane.showConfirmDialog(frame, "Еще не реализовано...", "Прастити", JOptionPane.PLAIN_MESSAGE, JOptionPane.INFORMATION_MESSAGE);
 	}
 	
-	private static void choseDocumentToSend() {
-		zaglushko();
+	
+	// EXIT:
+	private void exitRequest() {
+		Object[] options = { "Да", "Нет!" };
+		int n = JOptionPane.showOptionDialog(this, "Закрыть окно?", "Подтверждение", 
+						JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, 	null, options, options[0]);		
+		if (n == 0) {disconnectAndExit();}
 	}
 	
+	public static void disconnectAndExit() {Exit.exit();}
 	
 	
 	// GETS & SETS:
@@ -874,10 +853,10 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	}
 	public static void setupMenuBar(JMenuBar mBar) {frame.setJMenuBar(mBar);}
 	public static void setDialogOpacity(boolean dpOpacity) {
-		dialogPaneOpacity = dpOpacity;
 		IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_DIALOGPANE_OPACITY, dpOpacity);
 		chatPanel.repaint();
 	}
+	public static void updateBackgroundImage() {if (basePane != null) basePane.repaint();}
 	public static boolean isFullscreen() {	return isFullscreen;}
 	
 	
@@ -920,4 +899,15 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	public void mouseReleased(MouseEvent e) {}
 	public void mouseEntered(MouseEvent e) {}
 	public void mouseExited(MouseEvent e) {}
+
+	
+	// INNER CLASSES:
+	public class TransparentListCellRenderer extends DefaultListCellRenderer {
+	     @Override
+	     public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+	         Component c = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+	         if (!isSelected) {c.setBackground(new Color(0.0f, 0.0f, 0.0f, 0.0f));}
+	         return c;
+	     }
+	}
 }

@@ -23,8 +23,10 @@ import javax.swing.JTextField;
 import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 
+import door.Exit;
 import fox.adds.IOM;
 import fox.adds.Out;
+import fox.builders.FoxFontBuilder;
 import net.NetConnector;
 import registry.IOMs;
 import registry.Registry;
@@ -32,8 +34,9 @@ import registry.Registry;
 
 @SuppressWarnings("serial")
 public class LoginFrame extends JDialog {
-	private JPasswordField passField;
-	private JTextField loginField;
+	private static LoginFrame loginFrame;
+	private static JPasswordField passField;
+	private static JTextField loginField;
 	private Graphics2D g2D;
 	
 	
@@ -48,19 +51,20 @@ public class LoginFrame extends JDialog {
 //		ResManager.getFilesLink("requestImage").getPath() // KiraLis39
 	}
 	
-	public LoginFrame() {		
-		setTitle("Авторизация:");
+	public LoginFrame() {
+		loginFrame = this;
+		
 		setUndecorated(true);
 		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 		setPreferredSize(new Dimension(400, 250));
 		setBackground(new Color(0, 0, 0, 0));
-		setOpacity(0.95f);
+//		setOpacity(0.95f);
 		
-		JPanel basePane = new JPanel(new GridLayout(3, 0, 0, 9)) {
+		JPanel basePane = new JPanel(new GridLayout(3, 0, 0, 6)) {
 			@Override
 			protected void paintComponent(Graphics g) {
 				g2D = (Graphics2D) g;
-				Registry.render(g2D);
+				Registry.render(g2D, true);
 				
 				g2D.setColor(Color.DARK_GRAY);
 				g2D.fillRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 19, 19);
@@ -70,10 +74,16 @@ public class LoginFrame extends JDialog {
 				g2D.drawRoundRect(3, 4, getWidth() - 8, getHeight() - 8, 16, 16);
 				g2D.setColor(Color.GRAY);
 				g2D.drawRoundRect(4, 4, getWidth() - 8, getHeight() - 9, 16, 16);
+				
+				g2D.setFont(Registry.fBigSphere);
+				g2D.setColor(Color.BLACK);
+				g2D.drawString("-= LOG-IN =-", (int) (getWidth() / 2 - FoxFontBuilder.getStringCenterX(g2D, "-= LOG-IN =-")) - 1, 29);
+				g2D.setColor(Color.GRAY);
+				g2D.drawString("-= LOG-IN =-", (int) (getWidth() / 2 - FoxFontBuilder.getStringCenterX(g2D, "-= LOG-IN =-")), 28);
 			}			
 			
 			{
-				setBorder(new EmptyBorder(6, 3, 3, 3));
+				setBorder(new EmptyBorder(24, 3, 3, 3));
 				
 				JPanel loginPane = new JPanel(new BorderLayout()) {
 					@Override
@@ -97,7 +107,7 @@ public class LoginFrame extends JDialog {
 //								BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.GRAY, 1, true), "Логин:", 1, 2, Registry.fMessage, Color.GRAY.brighter())
 //						));
 						
-						loginField = new JTextField(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN)) {
+						loginField = new JTextField(IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER)) {
 							@Override
 							public void paintComponent(Graphics g) {
 								super.paintComponent(g);
@@ -210,7 +220,7 @@ public class LoginFrame extends JDialog {
 				JPanel buttonsPane = new JPanel(new GridLayout(0, 2, 6, 0)) {
 					{
 						setOpaque(false);
-						setBorder(new EmptyBorder(9, 24, 21, 24));
+						setBorder(new EmptyBorder(6, 24, 21, 24));
 						
 						JButton okButton = new JButton("=OK=") {
 							{
@@ -258,26 +268,6 @@ public class LoginFrame extends JDialog {
 		setVisible(true);
 	}
 
-	private void onOkButtonClick() {
-		if (!loginField.getText().isBlank()) {
-
-			if (passField.getPassword().length == 0) {
-				Out.Print(LoginFrame.class, 1, "Autorization of user '" + loginField.getText() + "' with empty password...");
-			} else {
-				IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_PASSWORD, new String(passField.getPassword()));
-				Out.Print(LoginFrame.class, 1, "Autorization of user '" + loginField.getText() + "' with password '" + new String(passField.getPassword()) + "'...");
-			}
-			
-			// send user data to server for a checking and awaits for response...
-			if (requestServerAccess(loginField.getText(), passField.getPassword())) {
-				IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN, loginField.getText());
-				IOM.saveAll();
-		
-				dispose();
-			} else {showDeniedDialog();}
-		} else {showInfoDialog();}
-	 }
-
 	private static Boolean requestServerAccess(String login, char[] password) {
 		NetConnector.reConnect(login, password);
 
@@ -291,13 +281,35 @@ public class LoginFrame extends JDialog {
 		}
 		return NetConnector.getCurrentState() == NetConnector.connState.CONNECTED;
 	 }
+	
+	
+	private static void onOkButtonClick() {
+		if (!loginField.getText().isBlank()) {
+
+			if (passField.getPassword().length == 0) {
+				Out.Print(LoginFrame.class, 1, "Autorization of user '" + loginField.getText() + "' with empty password...");
+			} else {
+				IOM.set(IOM.HEADERS.LAST_USER, "LAST_USER", loginField.getText());
+				IOM.set(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_PASSWORD, new String(passField.getPassword()));
+				Out.Print(LoginFrame.class, 1, "Autorization of user '" + loginField.getText() + "' with password '" + new String(passField.getPassword()) + "'...");
+			}
+			
+			// send user data to server for a checking and awaits for response...
+			if (requestServerAccess(loginField.getText(), passField.getPassword())) {
+				IOM.set(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER, loginField.getText());
+				IOM.save(IOM.HEADERS.LAST_USER.name());
+		
+				loginFrame.dispose();
+			} else {showDeniedDialog();}
+		} else {showInfoDialog();}
+	 }
 
 	private static void onExitButtonClick() {
 		NetConnector.disconnect();
-		System.exit(0);
-//		dispose();
+		Exit.exit(0);
 	 }
 
+	
 	private static void showInfoDialog() {
 		JOptionPane.showConfirmDialog(null, 
 				"<html>Вы не поняли.<hr>Необходимо указать своё имя.", "Вы не поняли?", 

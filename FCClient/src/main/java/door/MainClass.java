@@ -2,10 +2,11 @@ package door;
 
 import java.io.File;
 import java.io.FileFilter;
-import java.io.IOException;
 import java.util.TimeZone;
 
 import javax.swing.JOptionPane;
+import javax.swing.UIManager;
+import javax.swing.plaf.nimbus.NimbusLookAndFeel;
 
 import fox.adds.IOM;
 import fox.adds.Out;
@@ -13,10 +14,11 @@ import fox.builders.ResManager;
 import gui.ChatFrame;
 import media.Media;
 import registry.IOMs;
+import registry.Registry;
+import subGUI.LoginFrame;
 
 
 public class MainClass {
-
 	
 	public static void main(String[] args) {
 		TimeZone.setDefault(TimeZone.getTimeZone("GMT+3"));
@@ -48,20 +50,14 @@ public class MainClass {
 				ownDirectories[i].mkdirs();
 			}
 		}
-		
-		File configFile = new File("./resources/user/config.cfg");
-		if (!configFile.exists()) {
-			try {configFile.createNewFile();
-			} catch (IOException e) {
-				e.printStackTrace();
-				System.exit(22); // #22 - ошибка создания файла конфигурации пользователя при запуске программы
-			}
-		}
 	}
 
 	private static void buildIOM() {
-		IOM.add(IOM.HEADERS.CONFIG, new File("./resources/user/config.cfg"));
+		IOM.add(IOM.HEADERS.LAST_USER, new File("./resources/user/luser.dat"));
+		IOM.setIfNotExist(IOM.HEADERS.LAST_USER, "LAST_USER", "noname");		
+		if (IOM.getString(IOM.HEADERS.LAST_USER, "LAST_USER").equals("noname")) {new LoginFrame();}
 		
+		IOM.add(IOM.HEADERS.CONFIG, new File("./resources/user/" + IOM.getString(IOM.HEADERS.LAST_USER, "LAST_USER") + "/config.cfg"));		
 		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP, "localhost");
 		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT, 13900);
 		
@@ -78,7 +74,22 @@ public class MainClass {
 		
 		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.AFK_TIME_SEC, 600); // 10 min before AKF
 		
+		
 		Media.setSoundEnabled(IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.SOUNDS_ENABLED));
+		
+		if (IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_UI_STYLE)) {
+			try {UIManager.setLookAndFeel(new NimbusLookAndFeel());
+		    } catch (Exception e) {
+		    	try{UIManager.setLookAndFeel("com.jgoodies.plaf.plastic.PlasticXPLookAndFeel");
+				} catch (Exception e2){
+					try{UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+					} catch (Exception e3){
+						System.err.println("Couldn't get specified look and feel, for some reason: " + e3.getMessage());
+						Out.Print(MainClass.class, 2, "Setup the UIManagers L&F-style was failed. Cause: " + e3.getCause());
+					}
+				}
+			}
+		}
 	}
 	
 	private static void loadResources() {
@@ -102,12 +113,7 @@ public class MainClass {
 			ResManager.add("switchOffoverImage", new File("./resources/images/switchOffover.png"));
 			ResManager.add("switchOnImage", new File("./resources/images/switchOn.png"));
 			ResManager.add("switchOnoverImage", new File("./resources/images/switchOnover.png"));
-		} catch (Exception e) {
-			JOptionPane.showConfirmDialog(null, "<HTML>Произошла ошибка<br>при загрузке ресурсов!<br>", e.getMessage(), 
-					JOptionPane.PLAIN_MESSAGE, JOptionPane.WARNING_MESSAGE);
-//			e.printStackTrace();
-			System.exit(11);
-		}
+		} catch (Exception e) {regResourcesLoadErrorAndExit(e);}
 		
 		try {
 			File[] sounds = new File("./resources/sounds/").listFiles(new FileFilter() {
@@ -120,6 +126,15 @@ public class MainClass {
 			for (int i = 0; i < sounds.length; i++) {
 				Media.addSound(sounds[i].getName().substring(0, sounds[i].getName().length() - 4), sounds[i]);				
 			}
-		} catch (Exception e) {e.printStackTrace();}
+		} catch (Exception e) {regResourcesLoadErrorAndExit(e);}
+	}
+
+	private static void regResourcesLoadErrorAndExit(Exception e) {
+//		e.printStackTrace();		
+		JOptionPane.showConfirmDialog(null, 
+				"<HTML>Произошла ошибка<br>при загрузке ресурсов!<br>", e.getMessage(), 
+				JOptionPane.PLAIN_MESSAGE, JOptionPane.WARNING_MESSAGE);
+		
+		Exit.exit(Registry.RESOURCES_LOAD_FAIL);
 	}
 }

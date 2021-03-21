@@ -19,12 +19,13 @@ public class ChatStyler {
 	private static uiStyleType uiStyle = uiStyleType.DARK;
 	public enum backgroundFillType {STRETCH, FILL, ASIS, PROPORTIONAL}
 	private static backgroundFillType bFillType = backgroundFillType.STRETCH;
+	private static float sidePanelsOpasity = 0.75f;
 	
 	
 	public static void setBackgroundFillStyle(int bkgStyleIndex) {
 		bFillType = backgroundFillType.values()[bkgStyleIndex];
 		IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.BKG_DRAW_STYLE, bFillType.ordinal());
-		if (ChatFrame.basePane != null) ChatFrame.basePane.repaint();
+		ChatFrame.updateBackgroundImage();
 	}
 
 	public static void setUIStyle(uiStyleType style) {setUIStyle(style.ordinal());}
@@ -60,10 +61,10 @@ public class ChatStyler {
 		ChatFrame.setupMenuBar(null);
 		if (uiStyle == uiStyleType.DEFAULT) {
 			new MenuBar(Color.BLACK);
-			ChatFrame.setSidePanelsBkg(new Color(0.45f, 0.5f, 0.55f, 0.75f));
+			ChatFrame.setSidePanelsBkg(new Color(0.45f, 0.5f, 0.55f, sidePanelsOpasity));
 		} else {
 			new MenuBar(Color.WHITE);
-			ChatFrame.setSidePanelsBkg(new Color(0.1f, 0.1f, 0.1f, 0.75f));
+			ChatFrame.setSidePanelsBkg(new Color(0.1f, 0.1f, 0.1f, sidePanelsOpasity));
 		}
 		
 		ChatFrame.setupMenuBar(MenuBar.getMenu());

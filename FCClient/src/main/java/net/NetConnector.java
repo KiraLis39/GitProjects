@@ -24,7 +24,7 @@ public class NetConnector extends Thread {
 	public enum localMessageType {OUTPUT, INPUT, INFO, WARN}
 	public enum connState {DISCONNECTED, CONNECTING, CONNECTED}
 	private static connState state = connState.DISCONNECTED;
-	
+//	private static SimpleDateFormat dateFormatTime = new SimpleDateFormat("HH:mm:ss"); // ("dd.MM.yyyy")
 	private static Thread self;
 	private static Socket socket;
 	private static DataInputStream dis;
@@ -41,8 +41,8 @@ public class NetConnector extends Thread {
 				setCurrentState(connState.CONNECTING);
 				
 				try {
-					Out.Print(NetConnector.class, 1, "Trying to create socket with data: " + MenuBar.getIP() + ": " + MenuBar.getPort());
-					socket = new Socket(MenuBar.getIP(), MenuBar.getPort());
+					Out.Print(NetConnector.class, 1, "Trying to create socket with data: " + IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP) + ": " + IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT));
+					socket = new Socket(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP), Integer.parseInt(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT)));
 					System.out.println("Client socket up");
 					
 					Out.Print(NetConnector.class, 1, "Trying to create data IO-streams by clients socket...");
@@ -125,19 +125,13 @@ public class NetConnector extends Thread {
 		}
 		
 		if (incomeDTO.getMessageType() == GlobalMessageType.USERLIST_MESSAGE) {
-//			System.out.println("Users list: " + Arrays.toString(userList));
-			for (String userName : incomeDTO.getBody().split(",")) {
-				if (userName.equals(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN))) {continue;}
-				ChatFrame.addUserToList(userName);
-			}
+			ChatFrame.updateUserList(incomeDTO.getBody().split(","));			
 			return;
 		}
 		
-//		System.out.println("NetConnector: onMessageRecieved(): Client recieve: " + incomeDTO.toString());
 		ChatFrame.addMessage(incomeDTO, localMessageType.INPUT);	
 	}
 
-	
 	public static connState getCurrentState() {return state;}
 	private static void setCurrentState(connState _state) {
 		if (state == _state) {return;}
@@ -146,17 +140,17 @@ public class NetConnector extends Thread {
 		
 		if (state == connState.CONNECTED) {
 			Media.playSound("connect");
-			MenuBar.setReconnectButton(MenuBar.textColor == Color.BLACK ? new Color(0.25f, 0.5f, 0.5f) : Color.BLACK, Color.GREEN, "On-Line");
+			MenuBar.updateConnectLabel(MenuBar.textColor == Color.BLACK ? new Color(0.25f, 0.5f, 0.5f) : Color.BLACK, Color.GREEN, "On-Line");
 			ChatFrame.addMessage("Соединение с сервером успешно установлено!", localMessageType.INFO);
 			
-			IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP, MenuBar.getIP());
-			IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT, MenuBar.getPort());
+//			IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP, IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP));
+//			IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT, MenuBar.getPort());
 //			IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN, Registry.myNickName);
 		} else if (state == connState.CONNECTING) {
-			MenuBar.setReconnectButton(MenuBar.textColor == Color.BLACK ? new Color(0.75f, 0.25f, 0.0f) : Color.DARK_GRAY, Color.BLACK, "Connect..");
+			MenuBar.updateConnectLabel(MenuBar.textColor == Color.BLACK ? new Color(0.75f, 0.25f, 0.0f) : Color.DARK_GRAY, Color.BLACK, "Connect..");
 		} else {
 			Media.playSound("disconnect");
-			MenuBar.setReconnectButton(MenuBar.textColor == Color.BLACK ? null : new Color(0.45f, 0.2f, 0.2f), Color.RED, "Off-Line"); // new Color(0.75f, 0.5f, 0.5f)
+			MenuBar.updateConnectLabel(MenuBar.textColor == Color.BLACK ? null : new Color(0.45f, 0.2f, 0.2f), Color.RED, "Off-Line"); // new Color(0.75f, 0.5f, 0.5f)
 			ChatFrame.addMessage("Соединение с сервером отсутствует!", localMessageType.WARN);
 		}
 	}
@@ -184,9 +178,9 @@ public class NetConnector extends Thread {
 	public static void setAfk(boolean afk) {
 		if (isClientAFK != afk && getCurrentState() == connState.CONNECTED) {
 			isClientAFK = afk;
-			MenuBar.setReconnectButton(MenuBar.textColor == Color.BLACK ? new Color(0.25f, 0.5f, 0.5f) : Color.BLACK, Color.GREEN, "On-Line");
+			MenuBar.updateConnectLabel(MenuBar.textColor == Color.BLACK ? new Color(0.25f, 0.5f, 0.5f) : Color.BLACK, afk ? Color.YELLOW : Color.GREEN, afk ? "On-Line (AFK)" : "On-Line");
 			ChatFrame.addMessage("*** AFK " + (afk ? "ON" : "OFF") + " ***", localMessageType.INFO);
-			writeMessage(new MessageDTO(GlobalMessageType.SYSINFO_MESSAGE, IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN), 
+			writeMessage(new MessageDTO(GlobalMessageType.SYSINFO_MESSAGE, IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER), 
 					"AFK=" + NetConnector.isAfk(), System.currentTimeMillis()));
 		}
 	}

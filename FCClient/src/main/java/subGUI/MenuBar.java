@@ -52,7 +52,6 @@ import gui.ChatFrame;
 import gui.ChatStyler;
 import media.Media;
 import net.NetConnector;
-import net.NetConnector.connState;
 import registry.IOMs;
 import registry.Registry;
 
@@ -308,68 +307,13 @@ public class MenuBar extends JMenuBar implements ActionListener {
 					}
 				};
 			add(helpMenu);
-			
-			fieldIP = new JTextField("127.0.0.1", 10) {
-				{
-					setFont(Registry.fBigSphere);
-					setBackground(Color.BLACK);
-					setForeground(Color.GREEN);
-					setCaretColor(Color.YELLOW);
-					setHorizontalAlignment(0);
-					setBorder(null);
-					addFocusListener(new FocusAdapter() {
-						@Override
-						public void focusGained(FocusEvent e) {selectAll();}
-					});
-					addKeyListener(new KeyAdapter() {
-						@Override
-						public void keyReleased(KeyEvent e) {
-							if (e.getKeyCode() != KeyEvent.VK_BACK_SPACE) {
-								if (getText().length() == 3 || getText().length() == 7) {setText(getText() + ".");}
-							}
-						}
-					});
-				}
-			};
-			
-			fieldPort = new JTextField("13900", 5) {
-				{
-					setFont(Registry.fBigSphere);
-					setBackground(Color.BLACK);
-					setForeground(new Color(0, 127, 255));
-					setCaretColor(Color.YELLOW);
-					setBorder(null);
-					setHorizontalAlignment(0);
-					addFocusListener(new FocusAdapter() {										
-						@Override
-						public void focusGained(FocusEvent e) {selectAll();}
-					});
-				}
-			};
-			
-			fieldIP.setText(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP));
-			fieldPort.setText(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT));
 		}
 	}
 
 	public static JMenuBar getMenu() {return new MenuBar(null);}
 
-	public static String getIP() {return fieldIP.getText().replace(",", ".");}
-
-	public static int getPort() {
-		try {return Integer.parseInt(fieldPort.getText());			
-		} catch (Exception e) {return 0;}
-	}
 	
 	private void choseNewBackgroundImage() {
-//		UIManager.put("FileChooser.saveButtonText", "Сохранить");
-//		UIManager.put("FileChooser.cancelButtonText", "Отмена");
-//     UIManager.put("FileChooser.fileNameLabelText", "Наименование файла");
-//     UIManager.put("FileChooser.filesOfTypeLabelText", "Типы файлов");
-//     UIManager.put("FileChooser.lookInLabelText", "Директория");
-//     UIManager.put("FileChooser.saveInLabelText", "Сохранить в директории");
-//     UIManager.put("FileChooser.folderNameLabelText", "Путь директории");
-       
 		JFileChooser bkgImageChooser = new JFileChooser("./resources/images/backgrounds/") {
 			{
 				setDialogTitle("Новый бэкграунд:");
@@ -397,28 +341,33 @@ public class MenuBar extends JMenuBar implements ActionListener {
 	
 	public static void setConnLabelText(String text) {connectLabel.setText(text);}
 
-	public static void setReconnectButton(Color bkg, Color frg, String text) {
+	public static void updateConnectLabel(Color bkg, Color frg, String text) {
+		if (connectLabel == null) {return;}
+		
 		connectLabel.setBackground(bkg);
 		connectLabel.setForeground(frg);
-		connectLabel.setIcon(text.equals("On-Line") ? (NetConnector.isAfk() ? afkIcon : onlineIcon) : offlineIcon);
 		setConnLabelText(text);
+		
+		if (text.equals("On-Line")) {connectLabel.setIcon(onlineIcon);			
+		} else if (text.equals("On-Line (AFK)")) {connectLabel.setIcon(afkIcon);			
+		} else {connectLabel.setIcon(offlineIcon);}
 	}
 	
 	
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		switch (e.getActionCommand()) {
-			case "connect": 
-				if (NetConnector.getNetState() == connState.DISCONNECTED) {
-					if (IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN).equalsIgnoreCase("none")) {
-						new LoginFrame();
-					} else {
-						NetConnector.reConnect(
-								IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN), 
-								IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_PASSWORD).toCharArray());
-					}
-				} else {NetConnector.disconnect();}				
-				break;
+//			case "connect": 
+//				if (NetConnector.getNetState() == connState.DISCONNECTED) {
+//					if (IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN).equalsIgnoreCase("none")) {
+//						new LoginFrame();
+//					} else {
+//						NetConnector.reConnect(
+//								IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN), 
+//								IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_PASSWORD).toCharArray());
+//					}
+//				} else {NetConnector.disconnect();}				
+//				break;
 			case "exit": ChatFrame.disconnectAndExit();
 				break;
 			case "save": ChatFrame.saveChatToFile();
@@ -474,6 +423,45 @@ public class MenuBar extends JMenuBar implements ActionListener {
 							setBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder(
 									BorderFactory.createLineBorder(textColor, 1, true), "Address:", 0, 2, Registry.fMenuBar, textColor), 
 									new EmptyBorder(0, 0, 0, 0)));
+							
+
+							fieldIP = new JTextField("127.0.0.1", 10) {
+								{
+									setFont(Registry.fBigSphere);
+									setBackground(Color.BLACK);
+									setForeground(Color.GREEN);
+									setCaretColor(Color.YELLOW);
+									setHorizontalAlignment(0);
+									setBorder(null);
+									addFocusListener(new FocusAdapter() {
+										@Override
+										public void focusGained(FocusEvent e) {selectAll();}
+									});
+									addKeyListener(new KeyAdapter() {
+										@Override
+										public void keyReleased(KeyEvent e) {
+											if (e.getKeyCode() != KeyEvent.VK_BACK_SPACE) {
+												if (getText().length() == 3 || getText().length() == 7) {setText(getText() + ".");}
+											}
+										}
+									});
+								}
+							};
+							
+							fieldPort = new JTextField("13900", 5) {
+								{
+									setFont(Registry.fBigSphere);
+									setBackground(Color.BLACK);
+									setForeground(new Color(0, 127, 255));
+									setCaretColor(Color.YELLOW);
+									setBorder(null);
+									setHorizontalAlignment(0);
+									addFocusListener(new FocusAdapter() {										
+										@Override
+										public void focusGained(FocusEvent e) {selectAll();}
+									});
+								}
+							};
 							
 							JPanel ipPane = new JPanel(new BorderLayout(3, 3)) {
 								{
@@ -626,7 +614,7 @@ public class MenuBar extends JMenuBar implements ActionListener {
 				public void windowClosing(WindowEvent e) {
 					IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP, fieldIP.getText());
 					IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT, fieldPort.getText());
-					IOM.saveAll();
+					IOM.save(IOM.HEADERS.CONFIG.name());
 					
 					dispose();
 				}
@@ -635,6 +623,9 @@ public class MenuBar extends JMenuBar implements ActionListener {
 			pack();
 			setLocationRelativeTo(null);
 			setVisible(true);
+			
+			fieldIP.setText(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP));
+			fieldPort.setText(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT));
 			
 			box1.setSelected(IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.SOUNDS_ENABLED));
 			box2.setSelected(IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.ANIMATION_ENABLED));
@@ -652,4 +643,15 @@ public class MenuBar extends JMenuBar implements ActionListener {
 			}
 		}
 	}
+	
+	//Choice choice = new Choice();
+	//choice.addItem("First");
+	//choice.addItem("Second");
+	//choice.addItem("Third");
+
+//		Полезные методы класса Choice:
+//		countItems() - считать количество пунктов в списке; 
+//		getItem(int) - возвратить строку с определенным номером в списке; 
+//		select(int) - выбрать строку с определенным номером; 
+//		select(String) - выбрать определенную строку текста из списка. 
 }
