@@ -11,7 +11,7 @@ import fox.games.FoxSpritesCombiner;
 
 public class Registry {
 	public static String name = "FoxyChat"; 
-	public static String verse = "0.0.2.1"; 
+	public static String verse = "0.0.4.5"; 
 	public static String autor = "KiraLis39";
 	public static String mail = "AngelicaLis39@mail.ru";
 	public static String company = "@Multiverse_39 group, 2021";

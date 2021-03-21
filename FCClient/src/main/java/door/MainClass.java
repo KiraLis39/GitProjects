@@ -75,7 +75,9 @@ public class MainClass {
 		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_DIALOGPANE_OPACITY, true);		
 		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.SHOW_USERS_PANEL, true);
 		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.SHOW_LEFT_PANEL, false);
-
+		
+		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.AFK_TIME_SEC, 600); // 10 min before AKF
+		
 		Media.setSoundEnabled(IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.SOUNDS_ENABLED));
 	}
 	
@@ -88,8 +90,11 @@ public class MainClass {
 			
 			ResManager.add("grass", new File("./resources/images/grass.png"));
 			ResManager.add("userListEdge", new File("./resources/images/userListEdge.png"));
+			
 			ResManager.add("onlineImage", new File("./resources/images/onlineImage.png"));
 			ResManager.add("offlineImage", new File("./resources/images/offlineImage.png"));
+			ResManager.add("afkImage", new File("./resources/images/afkImage.png"));
+			
 			ResManager.add("resetIPButtonImage", new File("./resources/images/resetIPButtonImage.png"));
 			ResManager.add("sendButtonImage", new File("./resources/images/DEFAULT/btn.png"));
 			

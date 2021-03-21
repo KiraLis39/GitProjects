@@ -59,7 +59,7 @@ import registry.Registry;
 
 @SuppressWarnings("serial")
 public class MenuBar extends JMenuBar implements ActionListener {
-	private static Icon onlineIcon, offlineIcon;
+	private static Icon onlineIcon, offlineIcon, afkIcon;
 	private static Icon resetIPButtonIcon;
 	private static Icon switchOnIcon, switchOnOverIcon;
 	private static Icon switchOffIcon, switchOffOverIcon;
@@ -83,6 +83,8 @@ public class MenuBar extends JMenuBar implements ActionListener {
 			if (color != null) {textColor = color;}
 			onlineIcon = new ImageIcon(ResManager.getFilesLink("onlineImage").getPath());
 			offlineIcon = new ImageIcon(ResManager.getFilesLink("offlineImage").getPath());
+			afkIcon = new ImageIcon(ResManager.getFilesLink("afkImage").getPath());
+			
 			resetIPButtonIcon = new ImageIcon(ResManager.getFilesLink("resetIPButtonImage").getPath());
 			
 			switchOnIcon = new ImageIcon(ResManager.getFilesLink("switchOnImage").getPath());
@@ -272,6 +274,16 @@ public class MenuBar extends JMenuBar implements ActionListener {
 					setBackground(textColor == Color.BLACK ? Color.GRAY : Color.BLACK);
 //					setActionCommand("connect");
 //					addActionListener(MenuBar.this);
+					setToolTipText("Double-click to AFK change");
+					addMouseListener(new MouseAdapter() {						
+						@Override
+						public void mouseClicked(MouseEvent e) {
+							if (e.getClickCount() >= 2) {
+								NetConnector.setAfk(!NetConnector.isAfk());
+								repaint();
+							}
+						}
+					});
 				}
 			};
 			add(connectLabel);
@@ -388,7 +400,7 @@ public class MenuBar extends JMenuBar implements ActionListener {
 	public static void setReconnectButton(Color bkg, Color frg, String text) {
 		connectLabel.setBackground(bkg);
 		connectLabel.setForeground(frg);
-		connectLabel.setIcon(text.equals("On-Line") ? onlineIcon : offlineIcon);
+		connectLabel.setIcon(text.equals("On-Line") ? (NetConnector.isAfk() ? afkIcon : onlineIcon) : offlineIcon);
 		setConnLabelText(text);
 	}
 	

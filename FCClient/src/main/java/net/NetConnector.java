@@ -31,6 +31,7 @@ public class NetConnector extends Thread {
 	private static DataOutputStream dos;
 	private static String tmp_login;
 	private static char[] tmp_pass;
+	private static boolean isClientAFK;
 	
 	
 	public NetConnector(String login, char[] pass) {
@@ -47,6 +48,7 @@ public class NetConnector extends Thread {
 					Out.Print(NetConnector.class, 1, "Trying to create data IO-streams by clients socket...");
 					dis = new DataInputStream(socket.getInputStream());
 					dos = new DataOutputStream(socket.getOutputStream());
+
 					setCurrentState(connState.CONNECTED);
 					
 					// waiting for new income message:
@@ -177,4 +179,15 @@ public class NetConnector extends Thread {
 	public static connState getNetState() {return state;}
 
 	public static Thread getThread() {return self;}
+	
+	public static boolean isAfk() {return isClientAFK;}
+	public static void setAfk(boolean afk) {
+		if (isClientAFK != afk && getCurrentState() == connState.CONNECTED) {
+			isClientAFK = afk;
+			MenuBar.setReconnectButton(MenuBar.textColor == Color.BLACK ? new Color(0.25f, 0.5f, 0.5f) : Color.BLACK, Color.GREEN, "On-Line");
+			ChatFrame.addMessage("*** AFK " + (afk ? "ON" : "OFF") + " ***", localMessageType.INFO);
+			writeMessage(new MessageDTO(GlobalMessageType.SYSINFO_MESSAGE, IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN), 
+					"AFK=" + NetConnector.isAfk(), System.currentTimeMillis()));
+		}
+	}
 }

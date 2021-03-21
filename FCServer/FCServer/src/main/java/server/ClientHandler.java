@@ -23,7 +23,7 @@ public class ClientHandler implements Runnable {
 	private Thread cHandThread;
 	private String clientName;
 	
-	private boolean isAccessGranted;
+	private boolean isAccessGranted, isClientAFK;
 	
 	
 	public ClientHandler(Socket _socket) {
@@ -101,32 +101,49 @@ public class ClientHandler implements Runnable {
 		if (clientName == null) {clientName = incomeDTO.getFrom();}
 		
 		if (isAccessGranted) {
-			MonitorFrame.toConsole(
-					Server.getFormatTime(incomeDTO.getTimestamp()) + " (" +  getUserName() + " -> " + incomeDTO.getTo() + ") " + incomeDTO.getBody());
-//			> <13.03.2021> 17:49:24 (KiraLis39 -> Всем) 123
-			if (incomeDTO.getMessageType() == GlobalMessageType.PUBLIC_MESSAGE) {
-				Server.getAccess().broadcast(GlobalMessageType.PUBLIC_MESSAGE, this, incomeDTO.getBody(), true);				
-			} else if (incomeDTO.getMessageType() == GlobalMessageType.PRIVATE_MESSAGE) {
-				if (Server.containsClient(incomeDTO.getTo())) {Server.getAccess().getClient(incomeDTO.getTo()).say(incomeDTO);				
-				} else {say(new MessageDTO(GlobalMessageType.PRIVATE_MESSAGE, "SERVER", "Получатель не в сети. Повторите позже...", System.currentTimeMillis()));}				
-			} else {System.err.println("ClientHandler: onRecieveMessage(): Unknown message type income: " + incomeDTO.getMessageType() + ".");}						
-		} else {
-			if (incomeDTO.getMessageType() == GlobalMessageType.AUTH_REQUEST) {
-				MonitorFrame.toConsole("Приглашение получено: " + incomeDTO);
-				
-				if (!Server.containsClient(incomeDTO.getFrom())) {
-					// проверяем пароль клиента...
+			
+			MonitorFrame.toConsole(Server.getFormatTime(incomeDTO.getTimestamp()) + " (" +  getUserName() + " -> " + incomeDTO.getTo() + ") " + incomeDTO.getBody());
+			
+			switch (incomeDTO.getMessageType()) {
+				case PUBLIC_MESSAGE:	
+					Server.getAccess().broadcast(GlobalMessageType.PUBLIC_MESSAGE, this, incomeDTO.getBody(), true);
+					break;
 					
-					MonitorFrame.toConsole("Клиенту " + incomeDTO.getFrom() + " разрешено продолжение работы.");				
-					Server.getAccess().addClient(clientName, this);
+				case PRIVATE_MESSAGE:	
+					if (Server.containsClient(incomeDTO.getTo())) {Server.getAccess().getClient(incomeDTO.getTo()).say(incomeDTO);				
+					} else {say(new MessageDTO(GlobalMessageType.PRIVATE_MESSAGE, "SERVER", "Получатель не в сети. Повторите позже...", System.currentTimeMillis()));}
+					break;
 					
-					setAccessGranted(true);
-				} else {
-					MonitorFrame.toConsole("Отказ! Такой пользователь уже зарегистрирован на сервере!");
-					say(welcomeRequestDenied);
-					setAccessGranted(false);
-				}
-			} else {say(welcomeRequest);}
-		}
+				case SYSINFO_MESSAGE:	
+					// example AFK info etc...
+					if (incomeDTO.getBody().equals("AFK=true")) {isClientAFK = true;
+					} else if (incomeDTO.getBody().equals("AFK=false")) {isClientAFK = false;}
+					break;
+	
+				default: System.err.println("ClientHandler: onRecieveMessage(): Unknown message type income: " + incomeDTO.getMessageType() + ".");
+			}
+			
+		} else {lowRightsAccess(incomeDTO);}
 	}
+
+	private void lowRightsAccess(MessageDTO incomeDTO) {
+		if (incomeDTO.getMessageType() == GlobalMessageType.AUTH_REQUEST) {
+			MonitorFrame.toConsole("Приглашение получено: " + incomeDTO);
+			
+			if (!Server.containsClient(incomeDTO.getFrom())) {
+				// проверяем пароль клиента...
+				
+				MonitorFrame.toConsole("Клиенту " + incomeDTO.getFrom() + " разрешено продолжение работы.");				
+				Server.getAccess().addClient(clientName, this);
+				
+				setAccessGranted(true);
+			} else {
+				MonitorFrame.toConsole("Отказ! Такой пользователь уже зарегистрирован на сервере!");
+				say(welcomeRequestDenied);
+				setAccessGranted(false);
+			}
+		} else {say(welcomeRequest);}
+	}
+
+	public boolean isClientAFK() {return isClientAFK;}
 }

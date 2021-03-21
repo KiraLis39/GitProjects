@@ -22,6 +22,7 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.event.WindowStateListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 
@@ -58,18 +59,18 @@ import gui.ChatStyler.uiStyleType;
 import media.Media;
 import net.NetConnector;
 import net.NetConnector.localMessageType;
+import net.SubController;
 import registry.IOMs;
 import registry.Registry;
-import subGUI.BaloonPane;
-import subGUI.BaloonPane.Baloon;
+import subGUI.BaloonBack;
+import subGUI.BaloonBack.Baloon;
 import subGUI.LoginFrame;
 
 
 @SuppressWarnings("serial")
 public class ChatFrame extends JFrame implements ActionListener, MouseListener, MouseMotionListener {
-//	private static SimpleDateFormat dateFormatTime = new SimpleDateFormat("HH:mm:ss");
-//	private static SimpleDateFormat dateFormatDay = new SimpleDateFormat("dd.MM.yyyy");
-	
+//	private static SimpleDateFormat dateFormatTime = new SimpleDateFormat("HH:mm:ss"); // ("dd.MM.yyyy")
+	private Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
 	private static BufferedImage[] sendButtonSprite;
 
 	private static JButton sendButton;
@@ -111,7 +112,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		
 		setTitle(Registry.name + " v." + Registry.verse);
 		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-		setMinimumSize(new Dimension(530, 800));
+		setMinimumSize(new Dimension(600, 800));
 
 		basePane = new JPanel(new BorderLayout()) {
 			int bkgW, bkgH;
@@ -180,6 +181,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 							}
 							
 							{
+//								setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 								setOpaque(false);
 								setName("chatPane");
 							}
@@ -236,7 +238,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 					
 					{
 						setOpaque(false);
-						setBorder(new EmptyBorder(3, 24, 1, 3));
+						setBorder(new EmptyBorder(3, 16, 1, 3));
 						setVisible(IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.SHOW_USERS_PANEL));
 						
 						usersListModel = new DefaultListModel<String>();
@@ -306,6 +308,20 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 						g.drawString(Registry.company, (int) (getWidth() / 2 - FoxFontBuilder.getStringCenterX(g, Registry.company)) - 1, getHeight() - 6);
 						g.setColor(Color.WHITE);
 						g.drawString(Registry.company, (int) (getWidth() / 2 - FoxFontBuilder.getStringCenterX(g, Registry.company)), getHeight() - 7);
+						
+						g.setFont(Registry.fLabels);
+						
+						g.setColor(Color.GRAY);
+						g.drawString("'Ctrl+0' - anti-glitch;", 7, getHeight() - 9);
+						g.setColor(Color.BLACK);
+						g.drawString("'Ctrl+0' - anti-glitch;", 8, getHeight() - 8);
+						
+						if (isFullscreen()) {							
+							g.setColor(Color.GRAY);
+							g.drawString("'Ctrl+F' - switch fullscreen", FoxFontBuilder.getStringWidth(g, "'Ctrl+0' - anti-glitch;").intValue() + 15, getHeight() - 9);
+							g.setColor(Color.BLACK);
+							g.drawString("'Ctrl+F' - switch fullscreen", FoxFontBuilder.getStringWidth(g, "'Ctrl+0' - anti-glitch;").intValue() + 16, getHeight() - 8);
+						}
 					}
 					
 					{
@@ -456,57 +472,92 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		});
 		addMouseListener(this);
 		addMouseMotionListener(this);
+		addComponentListener(new ComponentAdapter() {
+			@Override	public void componentResized(ComponentEvent e) {needUpdate = true;}
+		});
+		addWindowStateListener(new WindowStateListener() {
+			@Override
+			public void windowStateChanged(WindowEvent e) {
+				System.out.println("FRAME STATE: " + e.getOldState() + " -> " + e.getNewState());
+				if (e.getNewState() == 0) {
+					if (NetConnector.isAfk()) {NetConnector.setAfk(false);}
+					isFullscreen = false;
+				} else if (e.getNewState() == 1) {
+					if (!NetConnector.isAfk()) {NetConnector.setAfk(true);}
+				} else if (e.getNewState() == 6) {
+					if (NetConnector.isAfk()) {NetConnector.setAfk(false);}
+					isFullscreen = true;
+				}
+				
+				switchFullscreen();
+			}
+		});
 		
 		setupInAc();
 
 		pack();
-//		setSize(new Dimension(getWidth(), java.awt.Toolkit.getDefaultToolkit().getScreenSize().height));
 		setLocationRelativeTo(null);
 		setVisible(true);
-		
-		setSidePanelsBkg(cSidePanelsBkg);
 		
 		// поток обновления UI:
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
 				Media.playSound("launched");
+				Thread t1 = null, t2 = null;
 				
 				while (true) {
-					if (needUpdate && !isBusy) {
+					if (needUpdate) {
+						needUpdate = false;
+						if (isBusy) {
+							t1.interrupt();
+							t2.interrupt();
+						}
 						isBusy = true;
 						
 						rightPane.setPreferredSize(new Dimension(ChatFrame.this.getWidth() / 5, 0));
-						repaint();
+						rightPane.revalidate();
+						rightPane.repaint();
 						
-						try {Thread.sleep(50);} catch (InterruptedException e) {/* IGNORE SLEEP */}
+
+						t1 = new Thread(() -> {revalidateChatBaloonsPanel();});
+						t1.start();						
+						try {t1.join();} catch (InterruptedException e1) {e1.printStackTrace();}
 						
-						revalidateChatBaloonsPanel();
-						repaint();
+						try {Thread.sleep(150);} catch (InterruptedException e) {/* IGNORE SLEEP */}
+						
+						t2 = new Thread(() -> {correctsBaloonsGlitches();});
+						t2.start();
+						try {t2.join();} catch (InterruptedException e1) {e1.printStackTrace();}
+						
+
+						t1 = new Thread(() -> {revalidateChatBaloonsPanel();});
+						t1.start();						
+						try {t1.join();} catch (InterruptedException e1) {e1.printStackTrace();}
+						
+						try {Thread.sleep(250);} catch (InterruptedException e) {/* IGNORE SLEEP */}
+						
+						t2 = new Thread(() -> {correctsBaloonsGlitches();});
+						t2.start();
+						try {t2.join();} catch (InterruptedException e1) {e1.printStackTrace();}
+						
 						
 						inputArea.requestFocusInWindow();
 						usersList.clearSelection();
 						
-						needUpdate = false;
 						isBusy = false;
+						scrollDown();
 					}
 					try {Thread.sleep(100);} catch (InterruptedException e) {/* IGNORE SLEEP */}
 				}
 			}
-		}) {{start();}};
+		}) {{setDaemon(true); start();}};
 	
-		userChecker();
+		// поток фоновых фич:
+		(new Thread(new SubController()){{setDaemon(true);}}).start();
 		
-		chatPanel.addComponentListener(new ComponentAdapter() {
-			@Override
-			public void componentResized(ComponentEvent e) {
-				if (frame.getSize().getWidth() >= Toolkit.getDefaultToolkit().getScreenSize().getWidth()) {isFullscreen = true;
-				} else {isFullscreen = false;}
-				
-//				revalidateChatBaloonsPanel();
-				needUpdate = true;
-			}
-		});
+		setSidePanelsBkg(cSidePanelsBkg);
+		userChecker();
 	}
 
 	private static void userChecker() {
@@ -519,6 +570,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		
 		if (IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_UI_STYLE)) {
 			try {UIManager.setLookAndFeel(new NimbusLookAndFeel());
+//				UIManager.setLookAndFeel("com.jgoodies.plaf.plastic.PlasticXPLookAndFeel");
 		    } catch (Exception e) {
 		    	try{UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 				} catch (Exception e2){System.err.println("Couldn't get specified look and feel, for some reason.");}
@@ -553,6 +605,18 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 				} else {exitRequest();}
 			}
 		});
+		InputAction.set("chat", "fullscreen", KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK, new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				isFullscreen = !isFullscreen;
+				switchFullscreen();
+				inputArea.requestFocusInWindow();
+			}
+		});
+		
+		InputAction.set("chat", "update_1", KeyEvent.VK_0, InputEvent.CTRL_DOWN_MASK, new AbstractAction() {
+			@Override	public void actionPerformed(ActionEvent e) {needUpdate = true;}
+		});
 	}
 
 	private static void init() {
@@ -562,6 +626,37 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		dialogPaneOpacity = IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_DIALOGPANE_OPACITY);
 	}
 
+	private void switchFullscreen() {
+		if (isFullscreen) {
+			if (frame.getSize().getWidth() >= screen.getWidth() && frame.isUndecorated()) {return;}
+			
+			isFullscreen = true;
+			frame.dispose();
+			frame.setUndecorated(true);
+			frame.setState(MAXIMIZED_BOTH);
+			frame.setSize(screen);
+			
+			frame.setLocationRelativeTo(null);
+			frame.setVisible(true);
+			
+			needUpdate = true;
+		} else {
+			if (frame.getSize().getWidth() < screen.getWidth() && !frame.isUndecorated()) {return;}
+			
+			isFullscreen = false;
+			frame.dispose();
+			frame.setUndecorated(false);
+			frame.setState(NORMAL);
+			
+//			frame.pack();
+			frame.setSize(frame.getMinimumSize());
+			frame.setLocationRelativeTo(null);
+			frame.setVisible(true);
+			
+			needUpdate = true;
+		}
+	}
+	
 	private void exitRequest() {
 		Object[] options = { "Да", "Нет!" };
 		int n = JOptionPane.showOptionDialog(this, "Закрыть окно?", "Подтверждение", 
@@ -569,6 +664,10 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		if (n == 0) {disconnectAndExit();}
 	}
 	
+/*
+Я не уверен, что есть метод лучше, чем тот, который вы упомянули. Проблема в том, что в общем случае вычитание прямоугольной области из другой оставит дыру где-то посередине, поэтому результат на самом деле не прямоугольник.
+В вашем случае вы знаете, что панель задач умещается точно на одной из сторон прямоугольника экрана, поэтому «лучший» способ действительно выяснить, с какой стороны она находится, и вычесть ширину / высоту с этой стороны.
+*/
 	public synchronized static void addMessage(String message, localMessageType type) {
 		addMessage(
 				new MessageDTO(
@@ -599,6 +698,8 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		
 		
 		if (type == localMessageType.OUTPUT) {
+			NetConnector.setAfk(false);
+			
 			balloonColor = mesColOutput;
 			messageDTO.setFrom(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN));
 			messageDTO.setTimestamp(System.currentTimeMillis());
@@ -632,7 +733,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 				Media.playSound("messageReceive");
 				break;
 				
-			default:	System.err.println("ChatFrame:addMessage(): Unknown type income: " + type);
+			default:	if (type != localMessageType.OUTPUT) System.err.println("ChatFrame:addMessage(): Unknown type income: " + type);
 		}
 
 		addChatBaloon(type, messageDTO, balloonColor);
@@ -641,62 +742,51 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	private static void addChatBaloon(localMessageType inputOrOutput, MessageDTO mesDTO, Color balloonColor) {
 		if (mesDTO.getBody() == null || mesDTO.getBody().isBlank()) {return;}
 		
-		BaloonPane newBaloon = new BaloonPane(inputOrOutput, mesDTO, balloonColor);
-		chatPanel.add(newBaloon);
+		BaloonBack newBaloonBack = new BaloonBack(inputOrOutput, mesDTO, balloonColor);
+		chatPanel.add(newBaloonBack);
 		chatPanel.add(Box.createVerticalStrut(3));
-		
-		revalidateBaloon(newBaloon);
+//		revalidateBaloon(newBaloonBack);
 		
 		scrollDown();
-		needUpdate = true;		
+		needUpdate = true;
 	}
-
 
 	private synchronized static void revalidateChatBaloonsPanel() {
+		System.out.println("\nrevalidateChatBaloonsPanel");
 		for (Component bc : chatPanel.getComponents()) {
-			if (bc instanceof BaloonPane) {revalidateBaloon((BaloonPane) bc);}
+			if (bc instanceof BaloonBack) {calculateBaloonSize(((BaloonBack) bc).getBaloon());}
 		}
 	}
 	
-	private synchronized static void revalidateBaloon(BaloonPane baloonPane) {
-		baloonPane.setPreferredSize(new Dimension((int) (msgsScroll.getSize().getWidth() - 19D), calculateBaloonSize(baloonPane.getBaloon())));
-		baloonPane.revalidate();
+	private synchronized static void correctsBaloonsGlitches() {
+		System.out.println("correctsBaloonsGlitches");
+		for (Component bc : chatPanel.getComponents()) {
+			if (bc instanceof BaloonBack) {
+				((BaloonBack) bc).setPreferredSize(new Dimension((int) (msgsScroll.getSize().getWidth() - 19D), ((BaloonBack) bc).getBaloon().getPreferredSize().height));
+			}
+			bc.revalidate();
+		}
 	}
-	
-	private synchronized static int calculateBaloonSize(Baloon baloon) {
-		Double maxWindowWidth = msgsScroll.getSize().getWidth() - 20D;
-		String maxLine = "";
-		for (String line : baloon.getAreaText().split("\n")) {
-			if (line.length() > maxLine.length()) {maxLine = line;}
-		}
-		Double headerWidth = FoxFontBuilder.getStringWidth(baloon.getGraphics(), baloon.getHeaderText()) + 26D;
-		Double lineWidth = FoxFontBuilder.getStringWidth(baloon.getArea().getGraphics(), maxLine) + 38D;
 		
-		int w, h;
-		// WIDTH:
-		if (headerWidth >= lineWidth) {w = headerWidth.intValue();
-		} else {
-			if (maxWindowWidth > lineWidth) {w = lineWidth.intValue();
-			} else {w = maxWindowWidth.intValue();}
-		}
+	private synchronized static void calculateBaloonSize(Baloon baloon) {
+		if (baloon.getArea().getGraphics() == null) return;
 		
-		// HEIGHT:
-		int lineHeight = (int) (FoxFontBuilder.getStringHeight(baloon.getArea().getGraphics()) * 1.03f);
-		int linesCount = baloon.getAreaText().split("\n").length; // +1 line on ever '\n'
-		if (lineWidth > maxWindowWidth) {
-			linesCount += (int) Math.max(Math.round(FoxFontBuilder.getStringWidth(baloon.getArea().getGraphics(), baloon.getAreaText())) / w, 1); // +1 line on ever auto-wrap
-		}
+		baloon.getDataLabel().setPreferredSize(new Dimension(FoxFontBuilder.getStringWidth(baloon.getGraphics(), baloon.getHeaderText()).intValue() + 9,	15));
+		Double maxPlace = msgsScroll.getSize().getWidth() - 19D;
 		
-		h = lineHeight * linesCount + baloon.getVerticalShiftsSum();
-		
-		baloon.setPreferredSize(new Dimension(w, h));
+		int canPlaceColumn;	
+		Double bodyWidth = FoxFontBuilder.getStringWidth(baloon.getArea().getGraphics(), baloon.getAreaText());
+		Double headWidth = FoxFontBuilder.getStringWidth(baloon.getArea().getGraphics(), baloon.getHeaderText());
+		if (bodyWidth > headWidth) {
+			if (bodyWidth > maxPlace) {
+				canPlaceColumn = (int) (maxPlace / FoxFontBuilder.getStringWidth(baloon.getArea().getGraphics(), "W")) - 6;
+				baloon.getArea().setColumns(canPlaceColumn);
+			} else {
+				canPlaceColumn = (int) (bodyWidth / FoxFontBuilder.getStringWidth(baloon.getArea().getGraphics(), "W")) - 0;
+				baloon.getArea().setColumns(canPlaceColumn);
+			}
+		}		
 		baloon.revalidate();
-		
-		return h;
-/*
-Я не уверен, что есть метод лучше, чем тот, который вы упомянули. Проблема в том, что в общем случае вычитание прямоугольной области из другой оставит дыру где-то посередине, поэтому результат на самом деле не прямоугольник.
-В вашем случае вы знаете, что панель задач умещается точно на одной из сторон прямоугольника экрана, поэтому «лучший» способ действительно выяснить, с какой стороны она находится, и вычесть ширину / высоту с этой стороны.
-*/
 	}
 	
 	
@@ -727,6 +817,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		IOM.saveAll();
 		System.exit(0);
 	}
+	
 	
 	
 	// UTILITES:
@@ -764,6 +855,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	}
 	
 	
+	
 	// GETS & SETS:
 	public static void setSendButtonSprite(BufferedImage[] spritelist) {sendButtonSprite = spritelist;}
 	public static void setBackgroundImage(BufferedImage bkgImage, String bkgPath) {
@@ -786,6 +878,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_DIALOGPANE_OPACITY, dpOpacity);
 		chatPanel.repaint();
 	}
+	public static boolean isFullscreen() {	return isFullscreen;}
 	
 	
 	// LISTENERS:
@@ -809,9 +902,11 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 
 	@Override
 	public void mouseDragged(MouseEvent e) {
-		ChatFrame.this.setLocation(
-				(int) (frameWas.getX() - (mouseWasOnScreen.getX() - e.getXOnScreen())), 
-				(int) (frameWas.getY() - (mouseWasOnScreen.getY() - e.getYOnScreen())));
+		try {
+			ChatFrame.this.setLocation(
+					(int) (frameWas.getX() - (mouseWasOnScreen.getX() - e.getXOnScreen())), 
+					(int) (frameWas.getY() - (mouseWasOnScreen.getY() - e.getYOnScreen())));
+		} catch (Exception e2) {/* IGNORE MOUSE DRAG */}
 	}
 
 	@Override
