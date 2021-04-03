@@ -8,13 +8,14 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import interfaces.iServerConnector;
 import java.util.Set;
-import javax.swing.SwingUtilities;
+
 import door.Message.MessageDTO;
 import door.Message.MessageDTO.GlobalMessageType;
 import gui.MonitorFrame;
@@ -23,9 +24,10 @@ import gui.MonitorFrame;
 @SuppressWarnings("serial")
 public class Server implements iServerConnector, Runnable {
 	private static SimpleDateFormat dateFormat = new SimpleDateFormat("<dd.MM.yyyy HH:mm:ss>");
-//	private static SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
 	
+	private static List<ClientHandler> nonAutorizedClients = new ArrayList<ClientHandler>();
 	private static Map<String, ClientHandler> clientsMap = new LinkedHashMap<String, ClientHandler>();
+	
 	private static LinkedHashMap<String, String> comsMap = new LinkedHashMap<String, String> () {
 		{
 			put("/?", "Выводит список всех доступных в консоли команд (см. 'help')");
@@ -46,7 +48,7 @@ public class Server implements iServerConnector, Runnable {
 		}
 	};
 
-	private static Thread serverConnectionThread;
+	private static Thread serverThread;
 	private static ServerSocket sSocket;	
 	private static Server server;
 	
@@ -62,31 +64,12 @@ public class Server implements iServerConnector, Runnable {
 	public synchronized void resetConnections() {
 		MonitorFrame.toConsole("Kick all clients...");
 		
-		for (Entry<String, ClientHandler> entry : clientsMap.entrySet()) {
-			if (entry.getValue().isConnected()) {
-				entry.getValue().kick();
-			}
-			
-			clientsMap.remove(entry.getKey());
-		}
-	}
-	
-	public synchronized void reviewConnections() {
-		SwingUtilities.invokeLater(new Runnable() {		
-			@Override
-			public void run() {
-				MonitorFrame.toConsole("Looking for outdated clients...");
-			}
-		});
+		for (Entry<String, ClientHandler> entry : clientsMap.entrySet()) {entry.getValue().kick();}
+		clientsMap.clear();		
 		
-		for (Entry<String, ClientHandler> entry : clientsMap.entrySet()) {
-			if (!entry.getValue().isConnected()) {
-				entry.getValue().kick();
-				clientsMap.remove(entry.getKey());
-			}			
-		}
+		for (ClientHandler nac : nonAutorizedClients) {nac.kick();}
+		nonAutorizedClients.clear();
 	}
-	
 	
 	public synchronized void broadcast(GlobalMessageType type, final ClientHandler srcClient, final String brdcstmsg, boolean isSelfExclude) {
 		/*
@@ -96,7 +79,7 @@ public class Server implements iServerConnector, Runnable {
 		if (clientsMap.size() > 0) {
 			for (ClientHandler handler : clientsMap.values()) {
 				if (handler.equals(srcClient) && isSelfExclude) {continue;
-				} else {handler.say(new MessageDTO(type, (srcClient == null ? "SERVER" :  srcClient.getUserName()), brdcstmsg, System.currentTimeMillis()));}
+				} else {handler.say(new MessageDTO(type, srcClient == null ? "SERVER" : srcClient.getUserName(), handler.getUserName(), brdcstmsg));}
 			}
 		}
 	}
@@ -104,7 +87,6 @@ public class Server implements iServerConnector, Runnable {
 	
 	@Override
 	public void run() {
-//		MonitorFrame.toConsole("Server thread starts...");		
 		try {
 			sSocket = new ServerSocket(PORT);
 			MonitorFrame.toConsole("Server up on " + sSocket.getInetAddress() + "/" + sSocket.getLocalPort());
@@ -116,19 +98,21 @@ public class Server implements iServerConnector, Runnable {
 		} catch (UnknownHostException e) {onServerException(e);
 		} catch (SocketException e) {onServerException(e);
 		} catch (IOException e) {onServerException(e);
-		} finally {MonitorFrame.toConsole("Server is shut down.");}
+		} finally {MonitorFrame.toConsole("Server.run(): Server thread is shut down.");}
 	}
 	
 	@Override
 	public synchronized void start() {
-		serverConnectionThread = new Thread(this) {
+		DataBase.loadDataBase();
+		
+		serverThread = new Thread(this) {
 			{
 				setDaemon(true);
 				setName("SERVER");				
 			}
 		};
-		serverConnectionThread.setDaemon(true);
-		serverConnectionThread.start();
+		serverThread.setDaemon(true);
+		serverThread.start();
 	}
 
 	@Override
@@ -139,19 +123,36 @@ public class Server implements iServerConnector, Runnable {
 			try {sSocket.close();
 			} catch (IOException e) {e.printStackTrace();}
 		}
-		serverConnectionThread.interrupt();
+		serverThread.interrupt();
 		MonitorFrame.toConsole("Server is shutdown.");
+	}
+	
+	@Override
+	public void close() {
+		serverThread = null;
+		sSocket = null;
+		clientsMap.clear();
+		DataBase.closeDB();
 	}
 
 	@Override
 	public synchronized void onClientConnection(ClientHandler ch) {
-		MonitorFrame.toConsole("Клиент пытается выполнить подключение...");		
+		MonitorFrame.toConsole("Новый клиент пытается выполнить подключение...");
+		nonAutorizedClients.add(ch);
 	}
 
 	@Override
 	public synchronized void onClientDisconnect(String clientName) {
-		// add runlater
-		MonitorFrame.toConsole("Server: onClientDisconnect(): " + clientName);
+		MonitorFrame.toConsole("Server.onClientDisconnect(): Client '" + clientName + "' disconnected.");
+		if (clientsMap.containsKey(clientName)) {clientsMap.remove(clientName);}
+		
+		for (ClientHandler ch : nonAutorizedClients) {
+			String uName = ch.getUserName();
+				if (uName == null || uName.equals(clientName)) {
+					nonAutorizedClients.remove(ch);
+					break;
+				}
+		}
 	}
 
 	@Override
@@ -175,6 +176,7 @@ public class Server implements iServerConnector, Runnable {
 	
 	public static synchronized int getPort() {return sSocket.getLocalPort();}
 	
+
 	public static synchronized boolean isNetAccessible() {
 		try(Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress("google.com", 80), 3000);
@@ -187,16 +189,20 @@ public class Server implements iServerConnector, Runnable {
 
 	public static synchronized String getFormatTime(long millis) {return dateFormat.format(millis);}
 
-	public int getConnectionsCount() {return clientsMap.size();}	
-	public static boolean isConnectionAlive() {return serverConnectionThread != null && serverConnectionThread.isAlive() && !serverConnectionThread.isInterrupted();}
+	public static boolean isConnectionAlive() {return serverThread != null && serverThread.isAlive() && !serverThread.isInterrupted();}
 
-	public Set<Entry<String, ClientHandler>> getConnections() {return clientsMap.entrySet();}
 	public static Set<Entry<String, String>> getCommandsMapSet() {return comsMap.entrySet();}
 	
-	public synchronized void addClient(String clientName, ClientHandler handler) {
-		clientsMap.put(clientName, handler);
-		handler.say(new MessageDTO(GlobalMessageType.USERLIST_MESSAGE, "SERVER", Arrays.toString(clientsMap.keySet().toArray()), System.currentTimeMillis()));
+	public synchronized int getNAConnectionsCount() {return nonAutorizedClients.size();}
+	
+	public synchronized Set<Entry<String, ClientHandler>> getConnections() {return clientsMap.entrySet();}
+	public synchronized Set<String> getClientsNameSet() {return clientsMap.keySet();}
+	public synchronized int getConnectionsCount() {return clientsMap.size();}
+	public synchronized void addClientToArray(ClientHandler handler) {
+		clientsMap.put(handler.getUserName(), handler);
+		nonAutorizedClients.remove(handler);
+//		handler.setAccessGranted(true, welc);
 	}
 	public synchronized ClientHandler getClient(String clientName) {return clientsMap.get(clientName);}
-	public static synchronized boolean containsClient(String clientName) {return clientsMap.containsKey(clientName);}
+	public static boolean containsClient(String to) {return clientsMap.containsKey(to);}
 }

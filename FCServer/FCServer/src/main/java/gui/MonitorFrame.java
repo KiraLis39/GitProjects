@@ -52,7 +52,7 @@ public class MonitorFrame extends JFrame {
 	private static SystemTray systemTray = SystemTray.getSystemTray();
 	static LinkedList<String> messageHistory = new LinkedList<String>();
 	
-	static JLabel connectsLabel;
+	static JLabel connectsLabel, naClientsLabel;
 	static JLabel statusLabel;
 	static JLabel onlineLabel;
 	static JTextArea console;
@@ -60,7 +60,7 @@ public class MonitorFrame extends JFrame {
 	static JTextField inputField;
 	
 	Font consoleFont = FoxFontBuilder.setFoxFont(FONT.CONSOLAS, 14, false);
-	private int historyMarker = 0;
+	int historyMarker = 0;
 	
 	
 	public MonitorFrame() {
@@ -106,8 +106,9 @@ public class MonitorFrame extends JFrame {
 								connectsLabel = new JLabel("" + Server.getAccess().getConnectionsCount()) {{setHorizontalAlignment(SwingConstants.LEFT);}};
 								add(connectsLabel);
 								
-								add(new JLabel("-"));						
-								add(new JLabel("-"));
+								add(new JLabel("Not autorized:") {{setForeground(Color.WHITE);}});
+								naClientsLabel = new JLabel("" + Server.getAccess().getNAConnectionsCount()) {{setHorizontalAlignment(SwingConstants.LEFT);}};
+								add(naClientsLabel);
 							}
 						};
 						
@@ -275,8 +276,9 @@ public class MonitorFrame extends JFrame {
 									Server.getAccess().broadcast(GlobalMessageType.PUBLIC_MESSAGE, null, cmd.replace("/bc ", ""), false);
 								} else if (cmd.startsWith("/say ")) {
 									cmd = cmd.replace("/say ", "");
-									String to = cmd.substring(0, cmd.indexOf(" ")), message = cmd.substring(to.length() + 1, cmd.length());
-									Server.getAccess().getClient(to).say(new MessageDTO(GlobalMessageType.PRIVATE_MESSAGE, "SERVER", message, System.currentTimeMillis()));
+									final String to = cmd.substring(0, cmd.indexOf(" "));
+									final String message = cmd.substring(to.length() + 1, cmd.length());
+									Server.getAccess().getClient(to).say(new MessageDTO(GlobalMessageType.PRIVATE_MESSAGE, "SERVER", to, message));
 								} else if (cmd.equalsIgnoreCase("/start")) {
 									if (!Server.isConnectionAlive()) {Server.getAccess().start();
 									} else {return "Сервер уже запущен!";}
@@ -398,7 +400,6 @@ public class MonitorFrame extends JFrame {
 			}
 		}) {{setDaemon(true);}}.start();
 	}
-
 	
 	void exitRequest() {
 		Object[] options = { "Да", "Нет!" };
@@ -406,7 +407,7 @@ public class MonitorFrame extends JFrame {
 						"<HTML>Завершить работу сервера,<br>разорвав все активные соединения?<br>(активных: " + Server.getAccess().getConnectionsCount() + ")", 
 						"Внимание!", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);				
 		if (n == 0) {
-			Server.getAccess().stop();
+			Server.getAccess().close();
 			System.exit(0);
 		}
 	}
@@ -430,7 +431,7 @@ public class MonitorFrame extends JFrame {
 	}
 	
 	
-	private static void printClientsList() {
+	static void printClientsList() {
 		toConsole("Clients on-line:");
 		for (Entry<String, ClientHandler> client : Server.getAccess().getConnections()) {
 			toConsole(client.getKey() + ": " + client.getValue().toString());
@@ -466,7 +467,9 @@ public class MonitorFrame extends JFrame {
 	}
 	public static void updateConnectionsCount() {
 		connectsLabel.setText("" + Server.getAccess().getConnectionsCount());
+		naClientsLabel.setText("" + Server.getAccess().getNAConnectionsCount());
 		connectsLabel.setForeground(Server.getAccess().getConnectionsCount() < Server.getMaxClientsAllowed() ? Color.GREEN : Color.RED);
+		naClientsLabel.setForeground(Server.getAccess().getConnectionsCount() + Server.getAccess().getNAConnectionsCount() < Server.getMaxClientsAllowed() ? Color.WHITE : Color.RED);
 	}
 
 	void traying(boolean hide) {

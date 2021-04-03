@@ -1,28 +1,29 @@
 package door;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.util.TimeZone;
 
-import javax.swing.JOptionPane;
+import javax.swing.LookAndFeel;
 import javax.swing.UIManager;
-import javax.swing.plaf.nimbus.NimbusLookAndFeel;
 
 import fox.adds.IOM;
 import fox.adds.Out;
 import fox.builders.ResManager;
-import gui.ChatFrame;
-import media.Media;
+import net.NetConnector;
 import registry.IOMs;
-import registry.Registry;
-import subGUI.LoginFrame;
 
 
 public class MainClass {
+	private final static LookAndFeel defaultLaF = UIManager.getLookAndFeel();
 	
 	public static void main(String[] args) {
+		// create UID:
+		loadSecure();
+
+		// set timezone:
 		TimeZone.setDefault(TimeZone.getTimeZone("GMT+3"));
 		
+		// tune:
 		Out.setEnabled(true);
 		Out.setLogsCoutAllow(3);
 		
@@ -31,11 +32,23 @@ public class MainClass {
 		
 		ResManager.setDebugOn(false);
 		
+		// prepare and launch:
 		checkFilesExists();
-		buildIOM();
-		loadResources();
-		
-		new ChatFrame();
+		getLastData();
+		NetConnector.reConnect();
+	}
+
+	private static void getLastData() {
+		IOM.add(IOM.HEADERS.LAST_USER, new File("./resources/user/luser.dat"));
+		IOM.setIfNotExist(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER, "");
+		IOM.setIfNotExist(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_PASSWORD, "");	
+		IOM.setIfNotExist(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_IP, "localhost");
+		IOM.setIfNotExist(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_PORT, 13900);
+	}
+
+	private static void loadSecure() {
+		IOM.add(IOM.HEADERS.SECURE, new File("./resources/secure.dat"));
+		IOM.setIfNotExist(IOM.HEADERS.SECURE, "UID", fox.tools.SystemInfo.USER.getUSER_NAME() + "_" + fox.tools.SystemInfo.CPU.getCPU_MODEL() + "_" + fox.tools.SystemInfo.CPU.getCPU_NAME());
 	}
 
 	private static void checkFilesExists() {
@@ -52,89 +65,5 @@ public class MainClass {
 		}
 	}
 
-	private static void buildIOM() {
-		IOM.add(IOM.HEADERS.LAST_USER, new File("./resources/user/luser.dat"));
-		IOM.setIfNotExist(IOM.HEADERS.LAST_USER, "LAST_USER", "noname");		
-		if (IOM.getString(IOM.HEADERS.LAST_USER, "LAST_USER").equals("noname")) {new LoginFrame();}
-		
-		IOM.add(IOM.HEADERS.CONFIG, new File("./resources/user/" + IOM.getString(IOM.HEADERS.LAST_USER, "LAST_USER") + "/config.cfg"));		
-		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP, "localhost");
-		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT, 13900);
-		
-		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.RENDER_ON, true);
-		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_UI_STYLE, true);
-		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.UI_STYLE, 2);
-		
-		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.ANIMATION_ENABLED, true);
-		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.SOUNDS_ENABLED, true);
-		
-		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_DIALOGPANE_OPACITY, true);		
-		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.SHOW_USERS_PANEL, true);
-		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.SHOW_LEFT_PANEL, false);
-		
-		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.AFK_TIME_SEC, 600); // 10 min before AKF
-		
-		
-		Media.setSoundEnabled(IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.SOUNDS_ENABLED));
-		
-		if (IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.USE_UI_STYLE)) {
-			try {UIManager.setLookAndFeel(new NimbusLookAndFeel());
-		    } catch (Exception e) {
-		    	try{UIManager.setLookAndFeel("com.jgoodies.plaf.plastic.PlasticXPLookAndFeel");
-				} catch (Exception e2){
-					try{UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-					} catch (Exception e3){
-						System.err.println("Couldn't get specified look and feel, for some reason: " + e3.getMessage());
-						Out.Print(MainClass.class, 2, "Setup the UIManagers L&F-style was failed. Cause: " + e3.getCause());
-					}
-				}
-			}
-		}
-	}
-	
-	private static void loadResources() {
-		try {
-			ResManager.add("requestImage", new File("./resources/images/requestImage.png"));
-			
-			ResManager.add("cur_0", new File("./resources/images/0.png"));
-			ResManager.add("cur_1", new File("./resources/images/1.png"));
-			
-			ResManager.add("grass", new File("./resources/images/grass.png"));
-			ResManager.add("userListEdge", new File("./resources/images/userListEdge.png"));
-			
-			ResManager.add("onlineImage", new File("./resources/images/onlineImage.png"));
-			ResManager.add("offlineImage", new File("./resources/images/offlineImage.png"));
-			ResManager.add("afkImage", new File("./resources/images/afkImage.png"));
-			
-			ResManager.add("resetIPButtonImage", new File("./resources/images/resetIPButtonImage.png"));
-			ResManager.add("sendButtonImage", new File("./resources/images/DEFAULT/btn.png"));
-			
-			ResManager.add("switchOffImage", new File("./resources/images/switchOff.png"));
-			ResManager.add("switchOffoverImage", new File("./resources/images/switchOffover.png"));
-			ResManager.add("switchOnImage", new File("./resources/images/switchOn.png"));
-			ResManager.add("switchOnoverImage", new File("./resources/images/switchOnover.png"));
-		} catch (Exception e) {regResourcesLoadErrorAndExit(e);}
-		
-		try {
-			File[] sounds = new File("./resources/sounds/").listFiles(new FileFilter() {
-				@Override
-				public boolean accept(File pathname) {
-					if (pathname.isFile() && pathname.getName().endsWith(".mp3")) {return true;}
-					return false;
-				}
-			});
-			for (int i = 0; i < sounds.length; i++) {
-				Media.addSound(sounds[i].getName().substring(0, sounds[i].getName().length() - 4), sounds[i]);				
-			}
-		} catch (Exception e) {regResourcesLoadErrorAndExit(e);}
-	}
-
-	private static void regResourcesLoadErrorAndExit(Exception e) {
-//		e.printStackTrace();		
-		JOptionPane.showConfirmDialog(null, 
-				"<HTML>Произошла ошибка<br>при загрузке ресурсов!<br>", e.getMessage(), 
-				JOptionPane.PLAIN_MESSAGE, JOptionPane.WARNING_MESSAGE);
-		
-		Exit.exit(Registry.RESOURCES_LOAD_FAIL);
-	}
+	public static LookAndFeel getDefaultLaF() {return defaultLaF;}
 }

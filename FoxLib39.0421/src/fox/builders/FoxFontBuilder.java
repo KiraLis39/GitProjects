@@ -1,0 +1,145 @@
+package fox.builders;
+
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.GraphicsEnvironment;
+import java.awt.geom.Rectangle2D;
+import java.io.File;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import javax.swing.JOptionPane;
+import fox.adds.Out;
+
+
+public class FoxFontBuilder {
+	public enum FONT {COMIC_SANS, MONOTYPE_CORSIVA, BAHNSCHRIFT, CANDARA, HARLOW_S_I, CORBEL, GEORGIA, ARIAL, ARIAL_NARROW, 
+		SEGOE_SCRIPT, CAMBRIA, CONSTANTIA, CONSOLAS, PAPYRYS, LEELAWADEE, SEGOE_UI_SYMBOL, TIMES_NEW_ROMAN}
+	private static FONT defaultFont = FONT.ARIAL_NARROW;
+	
+	private static List<String> fArr = new LinkedList<String>();
+	private static File fontsDirectory;
+		
+
+	public FoxFontBuilder() {this(null);}
+	
+	public FoxFontBuilder(File fontsDir) {
+		if (fontsDir != null) {fontsDirectory = fontsDir;}
+		
+		fArr.add(0, "Comic Sans MS");			fArr.add(1, "Monotype Corsiva");
+		fArr.add(2, "bahnschrift");				fArr.add(3, "Candara");
+		fArr.add(4, "Harlow Solid Italic");	fArr.add(5, "Corbel");
+		fArr.add(6, "Georgia");						fArr.add(7, "Arial");
+		fArr.add(8, "Arial Narrow");				fArr.add(9, "Segoe Script");
+		fArr.add(10, "Cambria");					fArr.add(11, "Constantia");
+		fArr.add(12, "Consolas");					fArr.add(13, "Papyrus");
+		fArr.add(14, "Leelawadee UI");		fArr.add(15, "Segoe UI Symbol");
+		fArr.add(16, "Times New Roman");
+	}
+
+	public static Font setFoxFont(FONT fontName, float fontSize) {return setFoxFont(fontName.ordinal(), Math.round(fontSize), false);}
+	
+	public static Font setFoxFont(FONT fontName, float fontSize, Boolean isBold) {return setFoxFont(fontName.ordinal(), Math.round(fontSize), isBold);}
+	
+	public static Font setFoxFont(int ID, int fontSize, Boolean isBold) {
+		if (fArr.size() == 0) {new FoxFontBuilder(null);}
+		
+		if (ID > fArr.size() - 1) {
+			errMessage(ID);
+			return new Font(fArr.get(defaultFont.ordinal()), isBold ? Font.BOLD : Font.PLAIN, fontSize);
+		}
+
+		Boolean fontExist = false;
+	    for (String fname : GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()) {
+	        if (fname.equalsIgnoreCase(fArr.get(ID))) {
+	        	fontExist = true;
+	        	break;
+	        }
+	    }
+	    
+	    System.out.println("\n");
+		
+	    if (!fontExist) {
+	    	Out.Print(FoxFontBuilder.class, 3, "Font '" + fArr.get(ID) + "' not exists in this OS! Please setup it if you can.");
+	    	if (fontsDirectory == null) {return new Font(fArr.get(defaultFont.ordinal()), isBold ? Font.BOLD : Font.PLAIN, fontSize);} // если шрифт не зарегистрирован и не указана дирректория с требуемым - возвращаем шрифт по-умолчанию.
+	    	
+	    	try {
+	    		Out.Print(FoxFontBuilder.class, 1, "Now will be setup income fonts pack...");
+//	    		InputStream stream = ClassLoader.getSystemClassLoader().getResourceAsStream("roboto-bold.ttf");
+//	    		Font font = Font.createFont(Font.TRUETYPE_FONT, stream).deriveFont(48f);
+//	    		Font font = Font.createFont(Font.TRUETYPE_FONT, new File("Fonts\\custom_font.ttf")).deriveFont(12f);
+	    		File[] fontsDir = fontsDirectory.listFiles();
+	    		for (File fontDir : fontsDir) {
+					File[] fonts = fontDir.listFiles();
+					for (File font : fonts) {
+						try {GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(Font.createFont(Font.TRUETYPE_FONT, font));
+						} catch (Exception e) {Out.Print(FoxFontBuilder.class, 2, "Не удалось подключить шрифт " + font.getName() + " как TRUETYPE." + e.getMessage());}
+					}
+				}
+	    	} catch (Exception e) {
+				e.printStackTrace();
+	    		Out.Print(FoxFontBuilder.class, 3, "Error with font existing! Set fonts dir by methode:  setFontsDirectory(File fontsDirectory) where fontsDirectory is a folder with fonts from FoxLib jar archive.fonts");
+	    		if (!fontsDirectory.exists()) {Out.Print(FoxFontBuilder.class, 3, "FAILED!");	    			
+	    		} else {Out.Print(FoxFontBuilder.class, 3, "Success!");}
+	    	}
+
+    		return new Font(fArr.get(defaultFont.ordinal()), isBold ? Font.BOLD : Font.PLAIN, fontSize);	    	
+	    }
+	    
+		return new Font(fArr.get(ID), isBold ? Font.BOLD : Font.PLAIN, fontSize);
+	}
+
+	
+	public static int getStringHeight(Graphics gr) {return gr.getFontMetrics().getHeight();}
+	public static Double getStringWidth(Graphics gr, String string) {return getStringBounds(gr, string).getWidth();}
+	
+	public static Double getStringCenterX(Graphics gr, String string) {return getStringBounds(gr, string).getCenterX();}
+	public static Double getStringCenterY(Graphics gr, String string) {return getStringBounds(gr, string).getCenterY();}
+	
+	public static Rectangle2D getStringBounds(Graphics gr, String string) {return gr.getFontMetrics(gr.getFont()).getStringBounds(string, gr);}
+		
+	
+	public static int addNewFont(String newFontName) {
+		fArr.add(newFontName);
+		return getFontID(newFontName);
+	}
+
+	public static int getFontID(String fontName) {
+		for (int i = 0; i < fArr.size(); i++) {
+			if (fArr.get(i).equals(fontName)) {return i;}
+		}
+		
+		return -1;
+	}
+
+	public static int getFontArraySize() {return fArr.size();}
+
+	public static Set<Entry<Integer, String>> getAllFontsTable() {
+		Map<Integer, String> tmpMap = new LinkedHashMap<>();
+		
+		for (int fontCount = 0; fontCount < fArr.size(); fontCount++) {
+			tmpMap.put(fontCount, fArr.get(fontCount));
+		}
+		
+		if (!tmpMap.isEmpty()) {return tmpMap.entrySet();} else {return null;}
+	}
+	
+	private static void errMessage(int ID) {
+		JOptionPane.showMessageDialog(null,
+				"В методе FontBuilder.getFontID нет шрифта с ID " + ID
+						+ "! Воспользуйтесь методами для получения количества\nдоступных или добавления своего, нового шрифта.",
+				"Ошибка!", JOptionPane.WARNING_MESSAGE);
+	}
+	
+	public static File getFontsDirectory() {return fontsDirectory;}
+	public static void setFontsDirectory(File _fontsDirectory) {fontsDirectory = _fontsDirectory;}
+}
+
+//		Как взять шрифт, которого нет на ПК, но есть в папке:
+//		try {upCardsFont = Font.createFont(Font.TRUETYPE_FONT, new File("./resources/fonts/papyrus.ttf"));
+//		} catch (Exception e) {e.printStackTrace();}
+//		upCardsFont = upCardsFont.deriveFont(getWidth() * 0.04f)		
+//		g2D.setFont(upCardsFont);

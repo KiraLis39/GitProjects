@@ -3,12 +3,10 @@ package net;
 import java.awt.Color;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.EOFException;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.Socket;
-import java.net.SocketException;
-import java.net.UnknownHostException;
+
+import javax.swing.JOptionPane;
 
 import door.Message.MessageDTO;
 import door.Message.MessageDTO.GlobalMessageType;
@@ -17,94 +15,88 @@ import fox.adds.Out;
 import gui.ChatFrame;
 import media.Media;
 import registry.IOMs;
+import registry.Registry;
+import subGUI.LoginFrame;
 import subGUI.MenuBar;
 
 
 public class NetConnector extends Thread {
 	public enum localMessageType {OUTPUT, INPUT, INFO, WARN}
-	public enum connState {DISCONNECTED, CONNECTING, CONNECTED}
-	private static connState state = connState.DISCONNECTED;
-//	private static SimpleDateFormat dateFormatTime = new SimpleDateFormat("HH:mm:ss"); // ("dd.MM.yyyy")
+	
+	public enum connStates {DISCONNECTED, CONNECTING, CONNECTED}
+	private static connStates connState = connStates.DISCONNECTED;
+	
+	public enum authStates {AUTORIZED, UNAUTORIZED}
+	private static authStates authState = authStates.UNAUTORIZED;
+	
+	private static MessageDTO authAnswer;
+	
 	private static Thread self;
 	private static Socket socket;
 	private static DataInputStream dis;
 	private static DataOutputStream dos;
-	private static String tmp_login;
-	private static char[] tmp_pass;
+	
 	private static boolean isClientAFK;
 	
 	
-	public NetConnector(String login, char[] pass) {
+	private NetConnector() {
 		super(new Runnable() {
 			@Override
 			public void run() {
-				setCurrentState(connState.CONNECTING);
-				
 				try {
-					Out.Print(NetConnector.class, 1, "Trying to create socket with data: " + IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP) + ": " + IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT));
-					socket = new Socket(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP), Integer.parseInt(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT)));
-					System.out.println("Client socket up");
+					setConnectState(connStates.CONNECTING);
 					
-					Out.Print(NetConnector.class, 1, "Trying to create data IO-streams by clients socket...");
+					Out.Print(NetConnector.class, 0, "Try to create socket with data: " + IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_IP) + ": " + Integer.parseInt(IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_PORT)));
+					socket = new Socket(IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_IP), Integer.parseInt(IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_PORT)));
+					
+					Out.Print(NetConnector.class, 0, "Try to create data IO-streams by clients socket...");
 					dis = new DataInputStream(socket.getInputStream());
 					dos = new DataOutputStream(socket.getOutputStream());
-
-					setCurrentState(connState.CONNECTED);
 					
-					// waiting for new income message:
-					String income;
-					while (true) {
-						income = dis.readUTF();
-						onMessageRecieved(MessageDTO.convertFromJson(income));
-					}
-				} catch (ConnectException e) {
-					System.out.println("\nНет соединения с сервером на клиенте (" + e.getMessage() + ").");
-//					e.printStackTrace();
-					disconnect();
-				} catch (SocketException e) {
-					System.out.println("\nCокет сообщил о проблеме на клиенте (" + e.getMessage() + ").");
-//					e.printStackTrace();
-				} catch (EOFException e) {
-					System.out.println("\nПотеря соединения с сервером на клиенте (" + e.getMessage() + ").");
-//					ChatFrame.sendMessage("Потеряно соединения с сервером!", messageType.WARN);
-					disconnect();
-//					e.printStackTrace();
-				} catch (UnknownHostException e) {
-					e.printStackTrace();
-//					setCurrentState(connState.DISCONNECTED);
-				} catch (IOException e) {
-					e.printStackTrace();
-//					setCurrentState(connState.DISCONNECTED);
-				}
+					// waiting for income message:
+					Out.Print(NetConnector.class, 1, "Client net is ready to get messages.");
+					while (true) {	onMessageRecieved(MessageDTO.convertFromJson(dis.readUTF()));}
+				} catch (Exception e) {showServerLostMessage(e);}
+			}
+
+			private void showServerLostMessage(Exception e) {
+				System.err.println("Нет соединения либо отказ сервера. Причина: " + e.getMessage());
+//				e.printStackTrace();
+				
+				if (!ChatFrame.isChatShowing()) {
+					JOptionPane.showConfirmDialog(null, "<html>Нет соединения либо отказ сервера.<br>Причина: <font color='RED'>" + e.getMessage(), 
+							"Error:", JOptionPane.PLAIN_MESSAGE, JOptionPane.PLAIN_MESSAGE);
+				} else {ChatFrame.addMessage("Потеряно соединения с сервером!", localMessageType.WARN);}
+				
+				disconnect();
 			}
 		});
 	
-		tmp_login = login;
-		tmp_pass = pass;
 		self = this;
 	}
 	
-	public static void reConnect(String login, char[] pass) {
-		Out.Print(ChatFrame.class, 1, "NetConnector.reConnect(): Try to connect with login '" + login + "' and pass '" + new String(pass) + "'...");
-		new NetConnector(login, pass).start();
+	public static void reConnect() {
+		authAnswer = new MessageDTO(GlobalMessageType.AUTH_REQUEST, "unautorized client", "SERVER", "AUTH UID FOR SERVER");
+		authAnswer.setUid(IOM.getString(IOM.HEADERS.SECURE, "UID"));
+		
+		new NetConnector().start();
 	}
 	
 	
 	public static boolean writeMessage(MessageDTO message) {
 		if (dos == null || socket == null || socket.isClosed()) {			
-			try {
-				System.out.println("Reconnecting...");
-				reConnect(tmp_login, tmp_pass);
+			try {reConnect();
 			} catch (Exception e) {
 				System.out.println("Не удалось отправить сообщение по причине: " + e.getMessage());
 				return false;
 			}
-		}
-		
+		}		
 		if (dos == null || socket == null || socket.isClosed()) {return false;}
 		
 		try {
+			System.out.println("Пишем серверу письмишко: " + message);
 			dos.writeUTF(message.convertToJson());
+			dos.flush();
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -113,75 +105,95 @@ public class NetConnector extends Thread {
 	}
 	
 	private static void onMessageRecieved(MessageDTO incomeDTO) {
-		System.out.println("Client: NetConnector().onMessageRecieved(): message = " + incomeDTO.toString());
+		if (incomeDTO.getTo() == null || incomeDTO.getTo().isBlank()) {incomeDTO.setTo(IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER));}
+		System.out.println("\nNetConnector.onMessageRecieved() >>> " + incomeDTO.toString());
 
-		if (incomeDTO.getMessageType() == GlobalMessageType.AUTH_REQUEST) {
-			try {dos.writeUTF(new MessageDTO(GlobalMessageType.AUTH_REQUEST, tmp_login, new String(tmp_pass), "SERVER", System.currentTimeMillis()).convertToJson());
-			} catch (IOException e) {e.printStackTrace();}	
-		} else if (incomeDTO.getMessageType() == GlobalMessageType.CONFIRM_MESSAGE) {ChatFrame.addMessage(incomeDTO, localMessageType.INPUT);
-		} else if (incomeDTO.getMessageType() == GlobalMessageType.REJECT_MESSAGE) {
+		if (incomeDTO.getMessageType() == GlobalMessageType.PUBLIC_MESSAGE || incomeDTO.getMessageType() == GlobalMessageType.PRIVATE_MESSAGE) {
 			ChatFrame.addMessage(incomeDTO, localMessageType.INPUT);
-			setCurrentState(connState.DISCONNECTED);
-		}
-		
-		if (incomeDTO.getMessageType() == GlobalMessageType.USERLIST_MESSAGE) {
-			ChatFrame.updateUserList(incomeDTO.getBody().split(","));			
 			return;
 		}
 		
-		ChatFrame.addMessage(incomeDTO, localMessageType.INPUT);	
-	}
-
-	public static connState getCurrentState() {return state;}
-	private static void setCurrentState(connState _state) {
-		if (state == _state) {return;}
-		Out.Print(NetConnector.class, 1, "Change connections state to " + _state);
-		state = _state;
+		if (incomeDTO.getMessageType() == GlobalMessageType.USERLIST_MESSAGE) {
+			ChatFrame.updateUserList(incomeDTO.getBody().split(","));
+			return;
+		}
 		
-		if (state == connState.CONNECTED) {
-			Media.playSound("connect");
-			MenuBar.updateConnectLabel(MenuBar.textColor == Color.BLACK ? new Color(0.25f, 0.5f, 0.5f) : Color.BLACK, Color.GREEN, "On-Line");
-			ChatFrame.addMessage("Соединение с сервером успешно установлено!", localMessageType.INFO);
-			
-//			IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP, IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP));
-//			IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT, MenuBar.getPort());
-//			IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN, Registry.myNickName);
-		} else if (state == connState.CONNECTING) {
-			MenuBar.updateConnectLabel(MenuBar.textColor == Color.BLACK ? new Color(0.75f, 0.25f, 0.0f) : Color.DARK_GRAY, Color.BLACK, "Connect..");
-		} else {
-			Media.playSound("disconnect");
-			MenuBar.updateConnectLabel(MenuBar.textColor == Color.BLACK ? null : new Color(0.45f, 0.2f, 0.2f), Color.RED, "Off-Line"); // new Color(0.75f, 0.5f, 0.5f)
-			ChatFrame.addMessage("Соединение с сервером отсутствует!", localMessageType.WARN);
+		
+		if (incomeDTO.getMessageType() == GlobalMessageType.AUTH_REQUEST) {
+			writeMessage(authAnswer);
+			return;
+		} else if (incomeDTO.getMessageType() == GlobalMessageType.CONFIRM_AUTH_MESSAGE) {
+			Registry.login = incomeDTO.getBody();
+			setAuthState(authStates.AUTORIZED);
+			return;
+		} else if (incomeDTO.getMessageType() == GlobalMessageType.REJECT_AUTH_MESSAGE) {
+			setAuthState(authStates.UNAUTORIZED);
+			return;
+		}
+		
+		if (incomeDTO.getMessageType() == GlobalMessageType.CONFIRM_PASS_MESSAGE) {
+			setConnectState(connStates.CONNECTED);
+			LoginFrame.readyChatCreate();
+			return;
+		} else if (incomeDTO.getMessageType() == GlobalMessageType.REJECT_PASS_MESSAGE) {
+			setConnectState(connStates.DISCONNECTED);
+			LoginFrame.showDeniedDialog(incomeDTO.getBody());
+			return;
 		}
 	}
 
+	public static void requestUserList() {
+		MessageDTO reqList = new MessageDTO(GlobalMessageType.USERLIST_MESSAGE, null, "SERVER");
+		writeMessage(reqList);
+	}
+
+	public static connStates getConnectState() {return connState;}
+	private static void setConnectState(connStates _state) {
+		connState = _state;
+		
+		if (connState == connStates.CONNECTED) {
+			Media.playSound("connect");
+//			addMessage("Соединение с сервером успешно установлено!", localMessageType.INFO);
+		} else if (connState == connStates.DISCONNECTED) {
+//			addMessage("Соединение с сервером отсутствует!", localMessageType.WARN);
+		}
+	}
+	
+	public static authStates getAuthState() {return authState;}
+	private static void setAuthState(authStates _state) {
+		authState = _state;
+		if (ChatFrame.isChatShowing()) {ChatFrame.disposeFrame();}
+		if (authState == authStates.UNAUTORIZED) {new LoginFrame(0);			
+		} else {new LoginFrame(1);}
+	}
+
 	public static void disconnect() {
+		Media.playSound("disconnect");
+		
 		try {
 			if (socket != null && !socket.isClosed()) {
 				socket.shutdownInput();
 				socket.shutdownOutput();
 				socket.close();
+
+				setConnectState(connStates.DISCONNECTED);
 			}
 			if (dis != null) {dis.close();}
 			if (dos != null) {dos.close();}
 		} catch (IOException e) {e.printStackTrace();}
 		
 		if (Thread.currentThread().isAlive()) {Thread.currentThread().interrupt();}
-		setCurrentState(connState.DISCONNECTED);
 	}
-
-	public static connState getNetState() {return state;}
 
 	public static Thread getThread() {return self;}
 	
 	public static boolean isAfk() {return isClientAFK;}
 	public static void setAfk(boolean afk) {
-		if (isClientAFK != afk && getCurrentState() == connState.CONNECTED) {
+		if (getConnectState() == connStates.CONNECTED && getAuthState() == authStates.AUTORIZED) {
 			isClientAFK = afk;
-			MenuBar.updateConnectLabel(MenuBar.textColor == Color.BLACK ? new Color(0.25f, 0.5f, 0.5f) : Color.BLACK, afk ? Color.YELLOW : Color.GREEN, afk ? "On-Line (AFK)" : "On-Line");
+			MenuBar.updateConnectLabel(MenuBar.getCurrentTextColor() == Color.BLACK ? new Color(0.25f, 0.5f, 0.5f) : Color.BLACK, afk ? Color.YELLOW : Color.GREEN, afk ? "On-Line (AFK)" : "On-Line");
 			ChatFrame.addMessage("*** AFK " + (afk ? "ON" : "OFF") + " ***", localMessageType.INFO);
-			writeMessage(new MessageDTO(GlobalMessageType.SYSINFO_MESSAGE, IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER), 
-					"AFK=" + NetConnector.isAfk(), System.currentTimeMillis()));
+			writeMessage(new MessageDTO(GlobalMessageType.SYSINFO_MESSAGE, null, "SERVER", "AFK=" + NetConnector.isAfk()));
 		}
 	}
 }

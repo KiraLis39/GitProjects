@@ -21,6 +21,9 @@ public class Registry {
 	public static String mail = "AngelicaLis39@mail.ru";
 	public static String company = "@Multiverse_39 group, 2021";
 	
+	// user temps:
+	public static String login = ""; 
+	
 	// utils:
 	public static FoxSpritesCombiner fsc = new FoxSpritesCombiner();
 	

@@ -523,7 +523,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 						t1.start();						
 						try {t1.join();} catch (InterruptedException e1) {e1.printStackTrace();}
 						
-						try {Thread.sleep(150);} catch (InterruptedException e) {/* IGNORE SLEEP */}
+						try {Thread.sleep(200);} catch (InterruptedException e) {/* IGNORE SLEEP */}
 						
 						t2 = new Thread(() -> {correctsBaloonsGlitches();});
 						t2.start();
@@ -534,7 +534,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 						t1.start();						
 						try {t1.join();} catch (InterruptedException e1) {e1.printStackTrace();}
 						
-						try {Thread.sleep(250);} catch (InterruptedException e) {/* IGNORE SLEEP */}
+						try {Thread.sleep(200);} catch (InterruptedException e) {/* IGNORE SLEEP */}
 						
 						t2 = new Thread(() -> {correctsBaloonsGlitches();});
 						t2.start();
@@ -557,13 +557,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		
 		setupInAc();
 		setSidePanelsBkg(cSidePanelsBkg);
-		connecting();
-	}
-
-	private static void connecting() {
-		NetConnector.reConnect(
-				IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER), 
-				IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_PASSWORD).toCharArray());
+		NetConnector.requestUserList();
 	}
 
 	private void setupInAc() {
@@ -615,7 +609,8 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	
 	// MESSAGE SYSTEM:
 	public synchronized static void addMessage(String message, localMessageType type) {
-		addMessage(new MessageDTO(GlobalMessageType.SYSINFO_MESSAGE, "System", message, (type == localMessageType.INFO || type == localMessageType.WARN) ? IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER) : null, System.currentTimeMillis()), type);
+		addMessage(new MessageDTO(GlobalMessageType.SYSINFO_MESSAGE, "System", 
+				(type == localMessageType.INFO || type == localMessageType.WARN) ? IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER) : null, message), type);
 	}
 	
 	public synchronized static void addMessage(MessageDTO messageDTO, localMessageType type) {
@@ -641,7 +636,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		
 		
 		if (type == localMessageType.OUTPUT) {
-			NetConnector.setAfk(false);
+			if (NetConnector.isAfk()) {NetConnector.setAfk(false);}
 			
 			balloonColor = mesColOutput;
 			messageDTO.setFrom(IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER));
@@ -735,6 +730,48 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	
 		
 	// UTILITES:
+	public static void addUserToList(String newUserName) {
+		newUserName = newUserName.replace("[", "").replace("]", "");
+		
+		if (!usersListModel.contains(newUserName)) {
+			usersListModel.addElement(newUserName);
+			rightPane.repaint();
+		}		
+	}
+	
+	public static void updateUserList(String[] users) {
+		if (usersListModel != null) {usersListModel.removeAllElements();} // or marked it off-line is better?..
+		
+		for (String userName : users) {
+			if (userName.equals(IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER))) {continue;}
+			addUserToList(userName);
+		}		
+	}
+	
+	public static void saveChatToFile() {zaglushko();}
+
+	public static void switchLeftPaneVisible() {
+		leftPane.setVisible(!leftPane.isVisible());
+		needUpdate = true;
+		IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.SHOW_LEFT_PANEL, leftPane.isVisible());
+	}
+	
+	public static void switchRightPaneVisible() {
+		rightPane.setVisible(!rightPane.isVisible());
+		needUpdate = true;
+		IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.SHOW_USERS_PANEL, rightPane.isVisible());
+	}
+
+	public static void disposeFrame() {frame.dispose();}
+	
+	public static boolean showFrame() {
+		if (frame != null) {
+			frame.setVisible(true);
+			return true;
+		}
+		return false;
+	}
+	
 	private static void switchFullscreen() {
 		if (isFullscreen) {
 			if (frame.getSize().getWidth() >= screen.getWidth() && frame.isUndecorated()) {return;}
@@ -766,38 +803,6 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		}
 	}
 	
-	public static void addUserToList(String newUserName) {
-		newUserName = newUserName.replace("[", "").replace("]", "");
-		
-		if (!usersListModel.contains(newUserName)) {
-			usersListModel.addElement(newUserName);
-			rightPane.repaint();
-		}		
-	}
-	
-	public static void updateUserList(String[] users) {
-		usersListModel.removeAllElements(); // or marked it off-line is better?..
-		
-		for (String userName : users) {
-			if (userName.equals(IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER))) {continue;}
-			addUserToList(userName);
-		}		
-	}
-	
-	public static void saveChatToFile() {zaglushko();}
-
-	public static void switchLeftPaneVisible() {
-		leftPane.setVisible(!leftPane.isVisible());
-		needUpdate = true;
-		IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.SHOW_LEFT_PANEL, leftPane.isVisible());
-	}
-	
-	public static void switchRightPaneVisible() {
-		rightPane.setVisible(!rightPane.isVisible());
-		needUpdate = true;
-		IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.SHOW_USERS_PANEL, rightPane.isVisible());
-	}
-
 	private static void scrollDown() {
 		new Thread(new Runnable() {
 			@Override
@@ -810,7 +815,6 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		}).start();
 		msgsScroll.revalidate();
 	}
-	
 	
 	private static void choseMusicToSend() {zaglushko();}
 	
@@ -858,6 +862,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	}
 	public static void updateBackgroundImage() {if (basePane != null) basePane.repaint();}
 	public static boolean isFullscreen() {	return isFullscreen;}
+	public static boolean isChatShowing() {return frame != null && frame.isVisible();}
 	
 	
 	// LISTENERS:

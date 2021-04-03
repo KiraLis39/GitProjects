@@ -1,47 +1,30 @@
 package subGUI;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Graphics;
-import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JSeparator;
-import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -50,24 +33,17 @@ import fox.adds.IOM;
 import fox.builders.ResManager;
 import gui.ChatFrame;
 import gui.ChatStyler;
-import media.Media;
 import net.NetConnector;
 import registry.IOMs;
-import registry.Registry;
 
 
 @SuppressWarnings("serial")
 public class MenuBar extends JMenuBar implements ActionListener {
 	private static Icon onlineIcon, offlineIcon, afkIcon;
-	private static Icon resetIPButtonIcon;
-	private static Icon switchOnIcon, switchOnOverIcon;
-	private static Icon switchOffIcon, switchOffOverIcon;
 	
 	public static Color textColor;
 	
-	private static JTextField fieldIP, fieldPort;
 	private static JLabel connectLabel;
-	private static JCheckBox box1, box2;
 	private JRadioButtonMenuItem styleDefault, styleGold, styleDark;
 	private JCheckBoxMenuItem dpOpacityBox;
 	
@@ -84,13 +60,6 @@ public class MenuBar extends JMenuBar implements ActionListener {
 			offlineIcon = new ImageIcon(ResManager.getFilesLink("offlineImage").getPath());
 			afkIcon = new ImageIcon(ResManager.getFilesLink("afkImage").getPath());
 			
-			resetIPButtonIcon = new ImageIcon(ResManager.getFilesLink("resetIPButtonImage").getPath());
-			
-			switchOnIcon = new ImageIcon(ResManager.getFilesLink("switchOnImage").getPath());
-			switchOnOverIcon = new ImageIcon(ResManager.getFilesLink("switchOnoverImage").getPath());
-			switchOffIcon = new ImageIcon(ResManager.getFilesLink("switchOffImage").getPath());
-			switchOffOverIcon = new ImageIcon(ResManager.getFilesLink("switchOffoverImage").getPath());
-			
 			setOpaque(false);
 			setBorder(new EmptyBorder(9, 0, 9, 0));
 			
@@ -101,12 +70,19 @@ public class MenuBar extends JMenuBar implements ActionListener {
 					setBorder(new EmptyBorder(0, 3, 0, 6));
 					setForeground(textColor);
 					
-					JMenuItem open = new JMenuItem("Сохранить в файл...") {
+					JMenuItem save = new JMenuItem("Сохранить в файл...") {
 						{
 							setOpaque(true);
 							setActionCommand("save");
 							addActionListener(MenuBar.this);
 							setIcon(new ImageIcon("./resources/images/save.png"));
+						}
+					};
+					JMenuItem logout = new JMenuItem("Отключиться") {
+						{
+							setOpaque(true);
+							setActionCommand("logout");
+							addActionListener(MenuBar.this);
 						}
 					};
 					JMenuItem exit = new JMenuItem("Выход") {
@@ -117,7 +93,8 @@ public class MenuBar extends JMenuBar implements ActionListener {
 						}
 					};
 					
-					add(open);
+					add(save);
+					add(logout);
 					addSeparator();
 					add(exit);
 				}
@@ -266,7 +243,7 @@ public class MenuBar extends JMenuBar implements ActionListener {
 //			add(Box.createHorizontalStrut(15));
 			add(Box.createHorizontalGlue());
 			
-			connectLabel = new JLabel("On-line:", offlineIcon, SwingConstants.CENTER) {
+			connectLabel = new JLabel("Net state:", offlineIcon, SwingConstants.CENTER) {
 				{
 //					setFocusPainted(false);
 					setPreferredSize(new Dimension(120, 24));
@@ -311,7 +288,8 @@ public class MenuBar extends JMenuBar implements ActionListener {
 	}
 
 	public static JMenuBar getMenu() {return new MenuBar(null);}
-
+	
+	public static Color getCurrentTextColor() {return textColor;}
 	
 	private void choseNewBackgroundImage() {
 		JFileChooser bkgImageChooser = new JFileChooser("./resources/images/backgrounds/") {
@@ -348,8 +326,8 @@ public class MenuBar extends JMenuBar implements ActionListener {
 		connectLabel.setForeground(frg);
 		setConnLabelText(text);
 		
-		if (text.equals("On-Line")) {connectLabel.setIcon(onlineIcon);			
-		} else if (text.equals("On-Line (AFK)")) {connectLabel.setIcon(afkIcon);			
+		if (text.equals("On-Line")) {connectLabel.setIcon(onlineIcon);
+		} else if (text.equals("On-Line (AFK)")) {connectLabel.setIcon(afkIcon);
 		} else {connectLabel.setIcon(offlineIcon);}
 	}
 	
@@ -357,17 +335,17 @@ public class MenuBar extends JMenuBar implements ActionListener {
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		switch (e.getActionCommand()) {
-//			case "connect": 
-//				if (NetConnector.getNetState() == connState.DISCONNECTED) {
-//					if (IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN).equalsIgnoreCase("none")) {
-//						new LoginFrame();
-//					} else {
-//						NetConnector.reConnect(
-//								IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_LOGIN), 
-//								IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.USER_PASSWORD).toCharArray());
-//					}
-//				} else {NetConnector.disconnect();}				
-//				break;
+			case "logout": 
+				NetConnector.disconnect();
+				if (!IOM.getBoolean(IOM.HEADERS.LAST_USER, IOMs.LUSER.KEEP_PASS)) {
+					IOM.set(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_PASSWORD, "");
+					IOM.save(IOM.HEADERS.LAST_USER);
+				}
+				
+				NetConnector.disconnect();
+				ChatFrame.disposeFrame();
+				new LoginFrame(1);			
+				break;
 			case "exit": ChatFrame.disconnectAndExit();
 				break;
 			case "save": ChatFrame.saveChatToFile();
@@ -404,254 +382,4 @@ public class MenuBar extends JMenuBar implements ActionListener {
 		}
 	}
 
-	
-	public static class OptionsDialog extends JDialog implements ActionListener {
-		
-		public OptionsDialog() {
-			setTitle("Настройки чата:");
-//			setAlwaysOnTop(true);
-			setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
-			setMinimumSize(new Dimension(440, 200));
-			
-			JPanel connectPane = new JPanel(new BorderLayout(3, 3)) {
-				{
-					setBackground(Color.DARK_GRAY);
-					
-					JPanel ipAndPortPane = new JPanel(new FlowLayout(1, 9, 0)) {
-						{
-							setOpaque(false);
-							setBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder(
-									BorderFactory.createLineBorder(textColor, 1, true), "Address:", 0, 2, Registry.fMenuBar, textColor), 
-									new EmptyBorder(0, 0, 0, 0)));
-							
-
-							fieldIP = new JTextField("127.0.0.1", 10) {
-								{
-									setFont(Registry.fBigSphere);
-									setBackground(Color.BLACK);
-									setForeground(Color.GREEN);
-									setCaretColor(Color.YELLOW);
-									setHorizontalAlignment(0);
-									setBorder(null);
-									addFocusListener(new FocusAdapter() {
-										@Override
-										public void focusGained(FocusEvent e) {selectAll();}
-									});
-									addKeyListener(new KeyAdapter() {
-										@Override
-										public void keyReleased(KeyEvent e) {
-											if (e.getKeyCode() != KeyEvent.VK_BACK_SPACE) {
-												if (getText().length() == 3 || getText().length() == 7) {setText(getText() + ".");}
-											}
-										}
-									});
-								}
-							};
-							
-							fieldPort = new JTextField("13900", 5) {
-								{
-									setFont(Registry.fBigSphere);
-									setBackground(Color.BLACK);
-									setForeground(new Color(0, 127, 255));
-									setCaretColor(Color.YELLOW);
-									setBorder(null);
-									setHorizontalAlignment(0);
-									addFocusListener(new FocusAdapter() {										
-										@Override
-										public void focusGained(FocusEvent e) {selectAll();}
-									});
-								}
-							};
-							
-							JPanel ipPane = new JPanel(new BorderLayout(3, 3)) {
-								{
-									setOpaque(false);
-									
-									JLabel ipLabel = new JLabel("IP: ") {
-										{
-											setFont(Registry.fMenuBarBig);
-											setForeground(textColor);
-											setHorizontalAlignment(SwingConstants.RIGHT);
-										}
-									};
-									
-									JButton resetIPButton = new JButton(resetIPButtonIcon) {
-										{
-											setBackground(textColor == Color.BLACK ? null : Color.BLACK);
-											setActionCommand("resetIP");
-											setToolTipText("Reset to localhost");
-											setPreferredSize(new Dimension(32, 32));
-											setFocusPainted(false);
-//											setBorderPainted(false);
-//											setBorder(BorderFactory.createRaisedBevelBorder());
-											addActionListener(OptionsDialog.this);
-										}
-									};
-									
-									add(ipLabel, BorderLayout.WEST);
-									add(fieldIP, BorderLayout.CENTER);
-									add(resetIPButton, BorderLayout.EAST);
-								}
-							};
-							
-							JPanel portPane = new JPanel(new BorderLayout(3, 3)) {
-								{
-									setOpaque(false);
-									
-									JLabel portLabel = new JLabel("PORT: ") {
-										{
-											setFont(Registry.fMenuBarBig);
-											setForeground(textColor);
-											setHorizontalAlignment(SwingConstants.RIGHT);
-										}
-									};
-									JButton resetPortButton = new JButton(resetIPButtonIcon) {
-										{
-											setBackground(textColor == Color.BLACK ? null : Color.BLACK);
-											setActionCommand("resetPort");
-											setToolTipText("Reset to default port");
-											setPreferredSize(new Dimension(32, 32));
-											setFocusPainted(false);
-//											setBorderPainted(false);
-//											setBorder(BorderFactory.createRaisedBevelBorder());
-											addActionListener(OptionsDialog.this);
-										}
-									};
-
-									add(portLabel, BorderLayout.WEST);
-									add(fieldPort, BorderLayout.CENTER);
-									add(resetPortButton, BorderLayout.EAST);
-								}
-							};
-							
-							add(ipPane);
-							add(portPane);
-						}
-					};
-
-					JPanel switchPane = new JPanel(new GridLayout(2, 1)) {
-						{
-							setOpaque(false);
-							setBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder(
-									BorderFactory.createLineBorder(textColor, 1, true), "Options:", 0, 2, Registry.fMenuBar, textColor), 
-									new EmptyBorder(0, 0, 0, 0)));
-							
-							box1 = new JCheckBox("Звуковые оповещения", switchOffIcon, false) {
-								{
-									setOpaque(false);
-									setFocusPainted(false);
-									setForeground(Color.WHITE);
-									setFont(Registry.fLabels);
-									setSelectedIcon(switchOffOverIcon);
-									addItemListener(new ItemListener() {
-										@Override
-										public void itemStateChanged(ItemEvent e) {
-											IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.SOUNDS_ENABLED, isSelected());
-											Media.setSoundEnabled(isSelected());
-											if (isSelected()) {setSelectedIcon(switchOnIcon);} else {setSelectedIcon(switchOffIcon);}
-										}
-									});
-									addMouseListener(new MouseAdapter() {
-										@Override
-										public void mouseEntered(MouseEvent e) {
-											if (isSelected()) {setSelectedIcon(switchOnOverIcon);
-											} else {setSelectedIcon(switchOffOverIcon);}
-										}
-										
-										@Override
-										public void mouseExited(MouseEvent e) {
-											if (isSelected()) {setSelectedIcon(switchOnIcon);
-											} else {setSelectedIcon(switchOffIcon);}
-										}
-									});
-								}
-							};
-							
-							box2 = new JCheckBox("Разрешить анимацию", switchOffIcon, false) {
-								{
-									setOpaque(false);
-									setFocusPainted(false);
-									setForeground(Color.WHITE);
-									setFont(Registry.fLabels);
-									
-									addItemListener(new ItemListener() {
-										@Override
-										public void itemStateChanged(ItemEvent e) {
-											IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.ANIMATION_ENABLED, isSelected());
-											if (isSelected()) {ChatFrame.zaglushko();}
-											if (isSelected()) {setSelectedIcon(switchOnIcon);} else {setSelectedIcon(switchOffIcon);}
-										}
-									});
-									addMouseListener(new MouseAdapter() {
-										@Override
-										public void mouseEntered(MouseEvent e) {
-											if (isSelected()) {setSelectedIcon(switchOnOverIcon);
-											} else {setSelectedIcon(switchOffOverIcon);}
-										}
-										
-										@Override
-										public void mouseExited(MouseEvent e) {
-											if (isSelected()) {setSelectedIcon(switchOnIcon);
-											} else {setSelectedIcon(switchOffIcon);}
-										}
-									});
-								}
-							};
-							
-							add(box1);
-							add(box2);
-						}
-					};
-					
-					add(ipAndPortPane, BorderLayout.NORTH);
-					add(switchPane, BorderLayout.CENTER);
-				}
-			};
-			
-			add(connectPane);
-			addWindowListener(new WindowAdapter() {
-				@Override
-				public void windowClosing(WindowEvent e) {
-					IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP, fieldIP.getText());
-					IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT, fieldPort.getText());
-					IOM.save(IOM.HEADERS.CONFIG.name());
-					
-					dispose();
-				}
-			});
-			
-			pack();
-			setLocationRelativeTo(null);
-			setVisible(true);
-			
-			fieldIP.setText(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_IP));
-			fieldPort.setText(IOM.getString(IOM.HEADERS.CONFIG, IOMs.CONFIG.LAST_PORT));
-			
-			box1.setSelected(IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.SOUNDS_ENABLED));
-			box2.setSelected(IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.ANIMATION_ENABLED));
-		}
-
-		
-		@Override
-		public void actionPerformed(ActionEvent e) {
-			switch (e.getActionCommand()) {
-				case "resetIP": fieldIP.setText("localhost");
-					break;
-				case "resetPort": fieldPort.setText("13900");
-					break;
-				default:
-			}
-		}
-	}
-	
-	//Choice choice = new Choice();
-	//choice.addItem("First");
-	//choice.addItem("Second");
-	//choice.addItem("Third");
-
-//		Полезные методы класса Choice:
-//		countItems() - считать количество пунктов в списке; 
-//		getItem(int) - возвратить строку с определенным номером в списке; 
-//		select(int) - выбрать строку с определенным номером; 
-//		select(String) - выбрать определенную строку текста из списка. 
 }
