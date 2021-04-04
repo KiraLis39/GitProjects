@@ -172,8 +172,11 @@ public class BaloonBack extends JPanel {
 		}
 		
 		public JTextArea getArea() {return baloonTextArea;}
-		public String getAreaText() {return body;}		
+		
 		public String getHeaderText() {return header;}
+		public String getAreaText() {return body;}
+		public String getFooterText() {return downDataLabel.getText();}
+		
 		public JLabel getDataLabel() {return downDataLabel;}
 
 		public int getVerticalShiftsSum() {
@@ -182,6 +185,7 @@ public class BaloonBack extends JPanel {
 					+ LAYOUT_SPACING
 					+ downDataLabel.getHeight();
 		}
+
 	}
 
 	public Baloon getBaloon() {return baloon;}

@@ -748,7 +748,19 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		}		
 	}
 	
-	public static void saveChatToFile() {zaglushko();}
+	public static void saveChatToFile() {
+		System.out.println("\nsaving chats messages");
+		for (Component bc : chatPanel.getComponents()) {
+			if (bc instanceof BaloonBack) {
+				Baloon nextBaloon = ((BaloonBack) bc).getBaloon();
+				String bHeader = nextBaloon.getHeaderText();
+				String bBody = nextBaloon.getAreaText();
+				String bFooter = nextBaloon.getFooterText();
+				
+				System.out.println("> " + bHeader + " > " + bBody + " > " + bFooter);
+			}
+		}
+	}
 
 	public static void switchLeftPaneVisible() {
 		leftPane.setVisible(!leftPane.isVisible());

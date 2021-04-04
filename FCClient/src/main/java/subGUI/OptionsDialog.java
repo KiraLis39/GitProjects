@@ -32,7 +32,6 @@ import javax.swing.border.EmptyBorder;
 
 import fox.adds.IOM;
 import fox.builders.ResManager;
-import gui.ChatFrame;
 import media.Media;
 import registry.IOMs;
 import registry.Registry;
@@ -226,8 +225,8 @@ public class OptionsDialog extends JDialog implements ActionListener {
 									@Override
 									public void itemStateChanged(ItemEvent e) {
 										IOM.set(IOM.HEADERS.CONFIG, IOMs.CONFIG.ANIMATION_ENABLED, isSelected());
-										if (isSelected()) {ChatFrame.zaglushko();}
 										if (isSelected()) {setSelectedIcon(switchOnIcon);} else {setSelectedIcon(switchOffIcon);}
+//										if (isSelected()) {ChatFrame.zaglushko();}
 									}
 								});
 								addMouseListener(new MouseAdapter() {

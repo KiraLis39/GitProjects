@@ -23,6 +23,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
@@ -389,7 +391,8 @@ public class MonitorFrame extends JFrame {
 		
 		Server.getAccess().start();
 		
-		new Thread(new Runnable() {
+		ExecutorService updateEx = Executors.newSingleThreadExecutor();
+		updateEx.execute(new Runnable() {
 			@Override	public void run() {
 				while (true) {
 					updateOnlineStatus();
@@ -398,7 +401,8 @@ public class MonitorFrame extends JFrame {
 					try {	Thread.sleep(500);} catch (InterruptedException e) {e.printStackTrace();}
 				}
 			}
-		}) {{setDaemon(true);}}.start();
+		});
+		updateEx.shutdown();
 	}
 	
 	void exitRequest() {

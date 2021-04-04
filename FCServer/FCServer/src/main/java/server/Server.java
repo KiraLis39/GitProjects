@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import interfaces.iServerConnector;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import door.Message.MessageDTO;
 import door.Message.MessageDTO.GlobalMessageType;
@@ -48,7 +50,7 @@ public class Server implements iServerConnector, Runnable {
 		}
 	};
 
-	private static Thread serverThread;
+	private static ExecutorService serverEx;
 	private static ServerSocket sSocket;	
 	private static Server server;
 	
@@ -105,14 +107,9 @@ public class Server implements iServerConnector, Runnable {
 	public synchronized void start() {
 		DataBase.loadDataBase();
 		
-		serverThread = new Thread(this) {
-			{
-				setDaemon(true);
-				setName("SERVER");				
-			}
-		};
-		serverThread.setDaemon(true);
-		serverThread.start();
+		serverEx = Executors.newSingleThreadExecutor();
+		serverEx.execute(this);
+		serverEx.shutdown();
 	}
 
 	@Override
@@ -123,13 +120,13 @@ public class Server implements iServerConnector, Runnable {
 			try {sSocket.close();
 			} catch (IOException e) {e.printStackTrace();}
 		}
-		serverThread.interrupt();
+		serverEx.shutdown();
 		MonitorFrame.toConsole("Server is shutdown.");
 	}
 	
 	@Override
 	public void close() {
-		serverThread = null;
+		serverEx.shutdownNow();
 		sSocket = null;
 		clientsMap.clear();
 		DataBase.closeDB();
@@ -189,7 +186,7 @@ public class Server implements iServerConnector, Runnable {
 
 	public static synchronized String getFormatTime(long millis) {return dateFormat.format(millis);}
 
-	public static boolean isConnectionAlive() {return serverThread != null && serverThread.isAlive() && !serverThread.isInterrupted();}
+	public static boolean isConnectionAlive() {return serverEx != null && !serverEx.isTerminated();}
 
 	public static Set<Entry<String, String>> getCommandsMapSet() {return comsMap.entrySet();}
 	
