@@ -35,16 +35,18 @@ public class MessageDTO {
 	
 	public MessageDTO(GlobalMessageType type, String from, String to) {this(type, from, to, null);}
 	
-	public MessageDTO(GlobalMessageType type, String from, String to, String body) {this(type, from, to, body, null, null);}
+	public MessageDTO(GlobalMessageType type, String from, String to, String body) {this(type, from, to, body, -1);}
 	
-	public MessageDTO(GlobalMessageType type, String from, String to, String body, String uid, String password) {
+	public MessageDTO(GlobalMessageType type, String from, String to, String body, long timestamp) {this(type, from, to, body, null, null, timestamp);}
+	
+	public MessageDTO(GlobalMessageType type, String from, String to, String body, String uid, String password, long timestamp) {
 		this.messageType = type;
 		this.uid = uid;
 		this.from = from;
 		this.to = to;
 		this.body = body;
 		this.password = password;
-		this.timestamp = System.currentTimeMillis();
+		this.timestamp = timestamp == -1 ? System.currentTimeMillis() : timestamp;
 	}
 	
 	public String convertToJson() {return new Gson().toJson(this);}

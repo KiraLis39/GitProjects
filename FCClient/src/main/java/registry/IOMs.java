@@ -15,7 +15,8 @@ public class IOMs {
 		USE_DIALOGPANE_OPACITY, 
 		AFK_TIME_SEC, 
 		DEBUG_GRAPHICS, 
-		MSG_SEND_TYPE
+		MSG_SEND_TYPE, 
+		LOAD_HISTORY_LINES
 	}
 
 	public static enum LUSER {

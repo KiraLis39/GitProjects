@@ -15,6 +15,7 @@ import javax.swing.JTextArea;
 import javax.swing.border.EmptyBorder;
 
 import door.Message.MessageDTO;
+import door.Message.MessageDTO.GlobalMessageType;
 import fox.adds.IOM;
 import fox.builders.FoxFontBuilder;
 import net.NetConnector.localMessageType;
@@ -42,14 +43,13 @@ public class BaloonBack extends JPanel {
 		}
 	}
 	
-	public BaloonBack(localMessageType inputOutput, MessageDTO mesDTO, final Color color) {				
+	public BaloonBack(localMessageType inputOutput, GlobalMessageType globalType, String from, String to, String body,	String footer) {
 		setLayout(new GridBagLayout());
 		setBackground(new Color(0.0f, 0.0f, 0.1f, 0.25f));
+		
+		baloon = new Baloon(inputOutput, from, to, body, footer);
+		
 
-		if (mesDTO.getTo() == null) {mesDTO.setTo("Всем");}
-		
-		baloon = new Baloon(color, mesDTO.getFrom(), mesDTO.getTo(), mesDTO.getBody());
-		
 		outGBC = new GridBagConstraints() {
 			{
 				this.insets = new Insets(0, 0, 0, 60);
@@ -82,17 +82,55 @@ public class BaloonBack extends JPanel {
 		} else {add(baloon, otherGBC);}
 	}
 	
-/*
-Я не уверен, что есть метод лучше, чем тот, который вы упомянули. Проблема в том, что в общем случае вычитание прямоугольной области из другой оставит дыру где-то посередине, поэтому результат на самом деле не прямоугольник.
-В вашем случае вы знаете, что панель задач умещается точно на одной из сторон прямоугольника экрана, поэтому «лучший» способ действительно выяснить, с какой стороны она находится, и вычесть ширину / высоту с этой стороны.
-*/
-	
+	public BaloonBack(localMessageType inputOutput, MessageDTO mesDTO) {
+		setLayout(new GridBagLayout());
+		setBackground(new Color(0.0f, 0.0f, 0.1f, 0.25f));
+
+		if (mesDTO.getTo() == null) {mesDTO.setTo("Всем");}
+		
+		baloon = new Baloon(inputOutput, mesDTO.getFrom(), mesDTO.getTo(), mesDTO.getBody());
+		
+		outGBC = new GridBagConstraints() {
+			{
+				this.insets = new Insets(0, 0, 0, 60);
+				this.anchor = GridBagConstraints.WEST;
+				this.fill = GridBagConstraints.NONE;
+
+				this.weightx = 1;	
+			}
+		};
+		
+		incomeGBC = new GridBagConstraints() {
+			{
+				this.anchor = GridBagConstraints.EAST;
+				this.fill = GridBagConstraints.NONE;
+				
+				this.weightx = 1;
+			}
+		};
+		
+		otherGBC = new GridBagConstraints() {
+			{
+				this.anchor = GridBagConstraints.CENTER;
+				this.fill = GridBagConstraints.BOTH;
+				this.weightx = 1;
+			}
+		};
+		
+		if (inputOutput == localMessageType.OUTPUT) {add(baloon, outGBC);
+		} else if (inputOutput == localMessageType.INPUT) {add(baloon, incomeGBC);
+		} else {add(baloon, otherGBC);}
+	}
+
 	public class Baloon extends JPanel {
 		private final int LAYOUT_SPACING = 3;
 		private final String from, body, to, strStart;
 		private final JLabel downDataLabel;
 		private final Color color;
-		
+		private final Color mesColSystem = new Color(1.0f, 0.35f, 0.0f, 0.6f);
+		private final Color mesColOutput = new Color(0.0f, 0.75f, 0.75f, 0.6f);
+		private final Color mesColInput = new Color(0.25f, 0.75f, 0.0f, 0.6f);
+		private final Color mesColWarn = new Color(1.0f, 0.0f, 0.0f, 0.6f);
 		
 		@Override
 		public void paintComponent(Graphics g) {
@@ -114,13 +152,28 @@ public class BaloonBack extends JPanel {
 			g2D.drawString(to, (int) (10D + FoxFontBuilder.getStringWidth(g2D, strStart)), 16);
 		}
 		
-		public Baloon(Color _color, String _from, String _to, String _body) {
-			color = _color;
-			from = _from;
-			body = _body;
-			to = _to;
+		public Baloon(localMessageType type, String _from, String _to, String _body) {
+			this(type, _from, _to, _body, null);
+		}
+		
+		public Baloon(localMessageType type, String _from, String _to, String _body, String footer) {
+			switch (type) {
+				case OUTPUT: color = mesColOutput;
+					break;					
+				case INPUT: color = mesColInput;
+					break;				
+				case INFO: color = mesColSystem;
+					break;				
+				case WARN: color = mesColWarn;
+					break;			
+				default: color = Color.GRAY;
+			}
 			
-			strStart = " От: " + from + " кому ";
+			this.from = _from;
+			this.body = _body;
+			this.to = _to;
+			
+			this.strStart = " От: " + from + " кому ";
 			header = strStart + to + " ";
 			
 			setOpaque(false);
@@ -160,7 +213,7 @@ public class BaloonBack extends JPanel {
 				}
 			};
 			
-			downDataLabel = new JLabel(format.format(System.currentTimeMillis())) {
+			downDataLabel = new JLabel(footer == null ? format.format(System.currentTimeMillis()) : footer) {
 				{
 					setHorizontalAlignment(RIGHT);
 					setFont(Registry.fLabels);
@@ -170,7 +223,7 @@ public class BaloonBack extends JPanel {
 			add(baloonTextArea, BorderLayout.CENTER);
 			add(downDataLabel, BorderLayout.SOUTH);
 		}
-		
+
 		public JTextArea getArea() {return baloonTextArea;}
 		
 		public String getHeaderText() {return header;}

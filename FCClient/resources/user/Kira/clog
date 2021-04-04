@@ -1,0 +1,5 @@
+&>OUTPUT&> От: Kira кому Всем &>Привет, мир!&>(04.04 10:38:06)&>PUBLIC_MESSAGE
+&>OUTPUT&> От: Kira кому Всем &>Как дела&>(04.04 10:38:10)&>PUBLIC_MESSAGE
+&>INPUT&> От: SERVER кому Kira &>Да номр, спасиб&>(04.04 10:38:18)&>PRIVATE_MESSAGE
+&>OUTPUT&> От: Kira кому Всем &>Оке )&>(04.04 10:38:23)&>PUBLIC_MESSAGE
+&>INPUT&> От: SERVER кому Kira &>Ага&>(04.04 10:38:30)&>PRIVATE_MESSAGE

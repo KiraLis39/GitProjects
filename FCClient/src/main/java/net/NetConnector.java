@@ -61,7 +61,7 @@ public class NetConnector extends Thread {
 
 			private void showServerLostMessage(Exception e) {
 				System.err.println("Нет соединения либо отказ сервера. Причина: " + e.getMessage());
-//				e.printStackTrace();
+				e.printStackTrace();
 				
 				if (!ChatFrame.isChatShowing()) {
 					JOptionPane.showConfirmDialog(null, "<html>Нет соединения либо отказ сервера.<br>Причина: <font color='RED'>" + e.getMessage(), 

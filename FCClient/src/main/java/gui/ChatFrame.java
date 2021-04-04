@@ -25,6 +25,12 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowStateListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -32,6 +38,7 @@ import javax.swing.Box;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JList;
 import javax.swing.JMenuBar;
@@ -71,6 +78,8 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	private static Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
 	private static BufferedImage[] sendButtonSprite;
 
+	private static File tmpHistoryFile = new File("./resources/user/" + IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER) + "/clog");
+	
 	private static ChatFrame frame;
 	private static JTextArea inputArea;
 	private static JScrollPane inputScroll, msgsScroll;
@@ -85,10 +94,6 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	private static boolean needUpdate = true, isBusy, isFullscreen;
 
 	private static Color cSidePanelsBkg = new Color(0.0f, 0.0f, 0.0f, 0.6f);
-	private static Color mesColSystem = new Color(1.0f, 0.35f, 0.0f, 0.6f);
-	private static Color mesColOutput = new Color(0.0f, 0.75f, 0.75f, 0.6f);
-	private static Color mesColInput = new Color(0.25f, 0.75f, 0.0f, 0.6f);
-	private static Color mesColWarn = new Color(1.0f, 0.0f, 0.0f, 0.6f);
 	
 	
 	@Override
@@ -558,6 +563,40 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		setupInAc();
 		setSidePanelsBkg(cSidePanelsBkg);
 		NetConnector.requestUserList();
+		
+		loadHistory(IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.LOAD_HISTORY_LINES));
+	}
+
+	private void loadHistory(int messagesCount) {
+		if (!tmpHistoryFile.exists()) {return;}
+		
+		StringBuilder sb = new StringBuilder();		
+		try {
+			for (String line : Files.readAllLines(tmpHistoryFile.toPath())) {sb.append(line + System.lineSeparator());}
+		} catch (IOException e) {e.printStackTrace();}
+
+		String[] lines = sb.toString().split(System.lineSeparator());
+		if (lines.length > messagesCount) {
+			int trimsCount = lines.length - messagesCount;
+			for (int i = 0; i < trimsCount; i++) {
+				lines[i] = null;
+			}
+		}
+
+		for (int i = 0; i < lines.length; i++) {
+			if (lines[i] == null || lines[i].isBlank()) {continue;}
+			
+			String[] data = lines[i].split("&>");			
+			localMessageType type = localMessageType.valueOf(data[1]);
+			String fromTo = data[2];
+			String body = data[3];
+			String date = data[4];
+			GlobalMessageType global = GlobalMessageType.valueOf(data[5]);
+			addChatBaloon(	type, global, 
+					fromTo.split("От: ")[1].split(" кому")[0], 
+					fromTo.split("кому ")[1], 
+					body, date);
+		}
 	}
 
 	private void setupInAc() {
@@ -615,8 +654,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	
 	public synchronized static void addMessage(MessageDTO messageDTO, localMessageType type) {
 		if (messageDTO.getBody() == null || messageDTO.getBody().isBlank()) {return;}
-		
-		Color balloonColor = Color.WHITE;
+
 		boolean successfulSended = false;
 		
 		if (messageDTO.getBody().startsWith("/to ")) {
@@ -637,8 +675,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		
 		if (type == localMessageType.OUTPUT) {
 			if (NetConnector.isAfk()) {NetConnector.setAfk(false);}
-			
-			balloonColor = mesColOutput;
+
 			messageDTO.setFrom(IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER));
 			messageDTO.setTimestamp(System.currentTimeMillis());
 			
@@ -649,24 +686,18 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 			} else {
 				messageDTO.setBody("(Не отправлено) " + messageDTO.getBody());
 				type = localMessageType.INFO;
-				balloonColor = mesColSystem;
 				Media.playSound("systemError");
 			}
 		}
 		
 		switch (type) {
-			case WARN:		
-				balloonColor = mesColWarn;
-				Media.playSound("systemError");
+			case WARN: Media.playSound("systemError");
 				break;
 				
-			case INFO: 	
-				balloonColor = mesColSystem;
-				Media.playSound("systemError");
+			case INFO: Media.playSound("systemError");
 				break;
 				
-			case INPUT:
-				balloonColor = mesColInput;				
+			case INPUT: 
 //				if (!messageDTO.getFrom().equals("SERVER") && !usersListModel.contains(messageDTO.getFrom())) {addUserToList(messageDTO.getFrom());}
 				Media.playSound("messageReceive");
 				break;
@@ -674,20 +705,48 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 			default:	if (type != localMessageType.OUTPUT) System.err.println("ChatFrame:addMessage(): Unknown type income: " + type);
 		}
 
-		addChatBaloon(type, messageDTO, balloonColor);
+		addChatBaloon(type, messageDTO);
 	}
 	
-	private static void addChatBaloon(localMessageType inputOrOutput, MessageDTO mesDTO, Color balloonColor) {
+	private static void addChatBaloon(localMessageType inputOrOutput, MessageDTO mesDTO) {
 		if (chatPanel == null) {return;}
 		if (mesDTO.getBody() == null || mesDTO.getBody().isBlank()) {return;}
 		
-		BaloonBack newBaloonBack = new BaloonBack(inputOrOutput, mesDTO, balloonColor);
+		BaloonBack newBaloonBack = new BaloonBack(inputOrOutput, mesDTO);
 		chatPanel.add(newBaloonBack);
 		chatPanel.add(Box.createVerticalStrut(3));
 //		revalidateBaloon(newBaloonBack);
 		
+		String bHeader = newBaloonBack.getBaloon().getHeaderText();
+		String bBody = newBaloonBack.getBaloon().getAreaText();
+		String bFooter = newBaloonBack.getBaloon().getFooterText();
+		String compoundString = "&>" + inputOrOutput + "&>" + bHeader + "&>" + bBody + "&>" + bFooter + "&>" + mesDTO.getMessageType() + System.lineSeparator();
+		if (!bHeader.contains("System") && !bHeader.contains("INFO")) {writeHistory(compoundString);}
+		
 		scrollDown();
 		needUpdate = true;
+	}
+	
+	private static void addChatBaloon(localMessageType type, GlobalMessageType glType, String from, String to, String body, String footer) {
+		BaloonBack newBaloonBack = new BaloonBack(type, glType, from, to, body, footer);
+		chatPanel.add(newBaloonBack);
+		chatPanel.add(Box.createVerticalStrut(3));
+	}
+
+	private static void writeHistory(String compoundString) {
+		try {
+			if (!tmpHistoryFile.exists()) {tmpHistoryFile.createNewFile();}
+			Path chatLog = tmpHistoryFile.toPath();
+			
+			try (OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(chatLog.toFile(), true), StandardCharsets.UTF_8)) {
+				osw.write(compoundString);
+				osw.flush();
+			} catch (Exception e) {e.printStackTrace();}
+		} catch (Exception e) {
+			JOptionPane.showConfirmDialog(frame, "<HTML>Произошла ошибка<br>при записи истории<br>" + tmpHistoryFile, e.getMessage(), 
+					JOptionPane.PLAIN_MESSAGE, JOptionPane.WARNING_MESSAGE);
+			e.printStackTrace();
+		}
 	}
 
 	private synchronized static void revalidateChatBaloonsPanel() {
@@ -750,16 +809,43 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	
 	public static void saveChatToFile() {
 		System.out.println("\nsaving chats messages");
+		StringBuilder sb = new StringBuilder();
 		for (Component bc : chatPanel.getComponents()) {
 			if (bc instanceof BaloonBack) {
 				Baloon nextBaloon = ((BaloonBack) bc).getBaloon();
 				String bHeader = nextBaloon.getHeaderText();
 				String bBody = nextBaloon.getAreaText();
 				String bFooter = nextBaloon.getFooterText();
+				String compoundString = "&>" + bHeader + "&>" + bBody + "&>" + bFooter + System.lineSeparator();
 				
-				System.out.println("> " + bHeader + " > " + bBody + " > " + bFooter);
+				sb.append(compoundString);
 			}
 		}
+		
+		JFileChooser chatSaveChooser = new JFileChooser(fox.tools.SystemInfo.USER.getUSER_HOME()) {
+			{
+				setDialogTitle("Куда сохраняем?");
+//				setFileFilter(new FileNameExtensionFilter("Images", "PNG", "JPG"));
+//				setFileHidingEnabled(false);
+//				setFileSelectionMode(JFileChooser.FILES_ONLY);						
+			}
+		};
+		
+		int result = chatSaveChooser.showSaveDialog(frame);
+		if (result == JFileChooser.APPROVE_OPTION) {
+			File chatFile = new File(chatSaveChooser.getSelectedFile().getPath() + ".txt");
+			try {
+				Path chatLog = chatFile.toPath();
+				try (OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(chatLog.toFile(), true), StandardCharsets.UTF_8)) {
+					osw.write(sb.toString());
+					osw.flush();
+				} catch (Exception e) {e.printStackTrace();}
+			} catch (Exception e) {
+				JOptionPane.showConfirmDialog(frame, "<HTML>Произошла ошибка<br>при сохранении файла<br>" + chatFile, e.getMessage(), 
+						JOptionPane.PLAIN_MESSAGE, JOptionPane.WARNING_MESSAGE);
+				e.printStackTrace();
+			}
+		}	
 	}
 
 	public static void switchLeftPaneVisible() {
