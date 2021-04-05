@@ -227,7 +227,7 @@ public class MenuBar extends JMenuBar implements ActionListener {
 					setBorder(new EmptyBorder(0, 3, 0, 0));
 					setForeground(textColor);
 					
-					add(new JMenuItem("Подключение") {
+					add(new JMenuItem("Открыть опции") {
 						{
 							setActionCommand("tune");
 							addActionListener(MenuBar.this);

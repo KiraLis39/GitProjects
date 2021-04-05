@@ -488,6 +488,8 @@ public class LoginFrame extends JDialog implements MouseListener, MouseMotionLis
 			ResManager.add("switchOffoverImage", new File("./resources/images/switchOffover.png"));
 			ResManager.add("switchOnImage", new File("./resources/images/switchOn.png"));
 			ResManager.add("switchOnoverImage", new File("./resources/images/switchOnover.png"));
+			
+			ResManager.add("sysImageBkg", new File("./resources/images/sysImageBkg.png"));
 		} catch (Exception e) {regResourcesLoadErrorAndExit(e);}
 		
 		try {
@@ -572,7 +574,7 @@ public class LoginFrame extends JDialog implements MouseListener, MouseMotionLis
 		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.SHOW_LEFT_PANEL, false);
 		
 		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.AFK_TIME_SEC, 600); // 10 min before AKF
-		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.LOAD_HISTORY_LINES, 100);
+		IOM.setIfNotExist(IOM.HEADERS.CONFIG, IOMs.CONFIG.LOAD_HISTORY_LINES, 30);
 		
 		Media.setSoundEnabled(IOM.getBoolean(IOM.HEADERS.CONFIG, IOMs.CONFIG.SOUNDS_ENABLED));
 	}

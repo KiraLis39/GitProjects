@@ -15,6 +15,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.InputEvent;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -80,10 +81,17 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 
 	private static File tmpHistoryFile = new File("./resources/user/" + IOM.getString(IOM.HEADERS.LAST_USER, IOMs.LUSER.LAST_USER) + "/clog");
 	
+	public static JPanel chatPanel;
+	
 	private static ChatFrame frame;
 	private static JTextArea inputArea;
 	private static JScrollPane inputScroll, msgsScroll;
-	private static JPanel basePane, chatPanel, rightPane, leftPane, downPane, midPane, correctPane;
+	private static JPanel basePane;
+	private static JPanel rightPane;
+	private static JPanel leftPane;
+	private static JPanel downPane;
+	private static JPanel midPane;
+	private static JPanel correctPane;
 	private static JButton sendButton;
 	
 	private static DefaultListModel<String> usersListModel;	
@@ -391,11 +399,35 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 							{
 								setWrapStyleWord(true);
 								setLineWrap(true);
-								setToolTipText("<HTML>Enter - next line<br>Ctrl+Enter - send");
 								setFont(Registry.fMessage);
 								setBorder(new EmptyBorder(0, 3, 0, 3));
 								setRequestFocusEnabled(true);
 //								setBackground(cSidePanelsBkg);
+								
+								addKeyListener(new KeyAdapter() {									
+									@Override
+									public void keyPressed(KeyEvent e) {
+										if (e.getExtendedKeyCode() == KeyEvent.VK_ENTER) {
+											if (e.getModifiersEx() == InputEvent.CTRL_DOWN_MASK) {enterActionVar(1);
+											} else {enterActionVar(0);}
+										}
+									}
+									
+									@Override
+									public void keyReleased(KeyEvent e) {
+										if (e.getKeyCode() != KeyEvent.VK_ENTER) {return;}
+										
+										if (IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.MSG_SEND_TYPE) == 0) {
+											if (e.getModifiersEx() == InputEvent.CTRL_DOWN_MASK) {
+												inputArea.setText(null);
+											}
+										} else {
+											if (e.getModifiersEx() != InputEvent.CTRL_DOWN_MASK) {
+												inputArea.setText(null);
+											}
+										}
+									};
+								});
 							}
 						};
 						
@@ -567,7 +599,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		loadHistory(IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.LOAD_HISTORY_LINES));
 	}
 
-	private void loadHistory(int messagesCount) {
+	private static void loadHistory(int messagesCount) {
 		if (!tmpHistoryFile.exists()) {return;}
 		
 		StringBuilder sb = new StringBuilder();		
@@ -575,7 +607,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 			for (String line : Files.readAllLines(tmpHistoryFile.toPath())) {sb.append(line + System.lineSeparator());}
 		} catch (IOException e) {e.printStackTrace();}
 
-		String[] lines = sb.toString().split(System.lineSeparator());
+		String[] lines = sb.toString().split("&>>");
 		if (lines.length > messagesCount) {
 			int trimsCount = lines.length - messagesCount;
 			for (int i = 0; i < trimsCount; i++) {
@@ -599,22 +631,10 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		}
 	}
 
-	private void setupInAc() {
-		InputAction.add("chat", this);
-		InputAction.set("chat", "enterText", KeyEvent.VK_ENTER, 0, new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				inputArea.requestFocusInWindow();
-				inputArea.append("\n");
-			}
-		});
-		InputAction.set("chat", "enterText", KeyEvent.VK_ENTER, InputEvent.CTRL_DOWN_MASK, new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				addMessage(inputArea.getText(), localMessageType.OUTPUT);
-				inputArea.requestFocusInWindow();
-			}
-		});
+	public static void setupInAc() {
+		System.out.println("SETUP INAC: " + IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.MSG_SEND_TYPE));
+		
+		InputAction.add("chat", frame);
 		InputAction.set("chat", "escape", KeyEvent.VK_ESCAPE, 0, new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -633,11 +653,27 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 				switchFullscreen();
 				inputArea.requestFocusInWindow();
 			}
-		});
-		
+		});	
 		InputAction.set("chat", "update", KeyEvent.VK_0, InputEvent.CTRL_DOWN_MASK, new AbstractAction() {
 			@Override	public void actionPerformed(ActionEvent e) {needUpdate = true;}
 		});
+	}
+
+	private static void enterActionVar(int var) {
+		if (IOM.getInt(IOM.HEADERS.CONFIG, IOMs.CONFIG.MSG_SEND_TYPE) == 0) {
+			inputArea.setToolTipText("<HTML>Enter - next line<br>Ctrl+Enter - send");
+			if (var == 0) {
+			} else {addMessage(inputArea.getText(), localMessageType.OUTPUT);}
+		} else {
+			inputArea.setToolTipText("<HTML>Ctrl+Enter - next line<br>Enter - send");
+			if (var == 0) {addMessage(inputArea.getText(), localMessageType.OUTPUT);
+			} else {nextInputLine();}
+		}
+	}
+	
+	private static void nextInputLine() {
+		inputArea.requestFocusInWindow();
+		inputArea.append("\n");
 	}
 
 	private static void init() {
@@ -706,6 +742,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		}
 
 		addChatBaloon(type, messageDTO);
+		inputArea.requestFocusInWindow();
 	}
 	
 	private static void addChatBaloon(localMessageType inputOrOutput, MessageDTO mesDTO) {
@@ -720,7 +757,7 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 		String bHeader = newBaloonBack.getBaloon().getHeaderText();
 		String bBody = newBaloonBack.getBaloon().getAreaText();
 		String bFooter = newBaloonBack.getBaloon().getFooterText();
-		String compoundString = "&>" + inputOrOutput + "&>" + bHeader + "&>" + bBody + "&>" + bFooter + "&>" + mesDTO.getMessageType() + System.lineSeparator();
+		String compoundString = "&>" + inputOrOutput + "&>" + bHeader + "&>" + bBody + "&>" + bFooter + "&>" + mesDTO.getMessageType() + "&>>";
 		if (!bHeader.contains("System") && !bHeader.contains("INFO")) {writeHistory(compoundString);}
 		
 		scrollDown();
@@ -927,9 +964,9 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 	
 	
 	// EXIT:
-	private void exitRequest() {
+	private static void exitRequest() {
 		Object[] options = { "Да", "Нет!" };
-		int n = JOptionPane.showOptionDialog(this, "Закрыть окно?", "Подтверждение", 
+		int n = JOptionPane.showOptionDialog(frame, "Закрыть окно?", "Подтверждение", 
 						JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, 	null, options, options[0]);		
 		if (n == 0) {disconnectAndExit();}
 	}

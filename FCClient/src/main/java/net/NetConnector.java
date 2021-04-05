@@ -58,18 +58,6 @@ public class NetConnector extends Thread {
 					while (true) {	onMessageRecieved(MessageDTO.convertFromJson(dis.readUTF()));}
 				} catch (Exception e) {showServerLostMessage(e);}
 			}
-
-			private void showServerLostMessage(Exception e) {
-				System.err.println("Нет соединения либо отказ сервера. Причина: " + e.getMessage());
-				e.printStackTrace();
-				
-				if (!ChatFrame.isChatShowing()) {
-					JOptionPane.showConfirmDialog(null, "<html>Нет соединения либо отказ сервера.<br>Причина: <font color='RED'>" + e.getMessage(), 
-							"Error:", JOptionPane.PLAIN_MESSAGE, JOptionPane.PLAIN_MESSAGE);
-				} else {ChatFrame.addMessage("Потеряно соединения с сервером!", localMessageType.WARN);}
-				
-				disconnect();
-			}
 		});
 	
 		self = this;
@@ -82,6 +70,17 @@ public class NetConnector extends Thread {
 		new NetConnector().start();
 	}
 	
+	private static void showServerLostMessage(Exception e) {
+		System.err.println("Нет соединения либо отказ сервера. Причина: " + e.getMessage());
+//		if (!e.getMessage().equals("Socket closed")) {e.printStackTrace();}
+		
+		if (!ChatFrame.isChatShowing()) {
+			JOptionPane.showConfirmDialog(null, "<html>Нет соединения либо отказ сервера.<br>Причина: <font color='RED'>" + e.getMessage(), 
+					"Error:", JOptionPane.PLAIN_MESSAGE, JOptionPane.PLAIN_MESSAGE);
+		} else {ChatFrame.addMessage("Потеряно соединения с сервером!", localMessageType.WARN);}
+		
+		disconnect();
+	}
 	
 	public static boolean writeMessage(MessageDTO message) {
 		if (dos == null || socket == null || socket.isClosed()) {			
@@ -99,7 +98,7 @@ public class NetConnector extends Thread {
 			dos.flush();
 			return true;
 		} catch (Exception e) {
-			e.printStackTrace();
+			showServerLostMessage(e);
 			return false;
 		}
 	}

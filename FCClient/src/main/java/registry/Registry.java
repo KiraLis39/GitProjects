@@ -16,7 +16,7 @@ public class Registry {
 	
 	// base info:
 	public static String name = "FoxyChat"; 
-	public static String verse = "0.0.4.6"; 
+	public static String verse = "0.0.5.1"; 
 	public static String autor = "KiraLis39";
 	public static String mail = "AngelicaLis39@mail.ru";
 	public static String company = "@Multiverse_39 group, 2021";

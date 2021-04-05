@@ -63,6 +63,7 @@ public class OptionsDialog extends JDialog implements ActionListener {
 		JPanel connectPane = new JPanel(new BorderLayout(3, 3)) {
 			{
 				setBackground(Color.DARK_GRAY);
+				setBorder(new EmptyBorder(3, 3, 3, 3));
 				
 				JPanel ipAndPortPane = new JPanel(new FlowLayout(1, 9, 0)) {
 					{
@@ -253,13 +254,14 @@ public class OptionsDialog extends JDialog implements ActionListener {
 				JPanel downPane = new JPanel(new BorderLayout(3, 3)) {
 					{
 						setOpaque(false);
+						setBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder(
+								BorderFactory.createLineBorder(secondColor, 1, true), "Messages:", 0, 2, Registry.fMenuBar, labelsColor), 
+								new EmptyBorder(0, 3, 3, 0)));
 						
 						JPanel otherPane = new JPanel(new GridLayout(2, 2)) {
 							{
 								setOpaque(false);
-								setBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder(
-										BorderFactory.createLineBorder(secondColor, 1, true), "Messages:", 0, 2, Registry.fMenuBar, labelsColor), 
-										new EmptyBorder(0, 3, 3, 0)));
+								
 								
 								JPanel sendMessagesType = new JPanel(new BorderLayout(3, 3)) {
 									{
