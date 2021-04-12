@@ -1,9 +1,0 @@
-#IOM: saveAll():
-#Mon Apr 05 20:47:04 GMT+03:00 2021
-LAST_PASSWORD=123
-propFile=.\\resources\\user\\luser.dat
-LAST_PORT=13900
-KEEP_PASS=true
-LAST_USER=Kira
-propName=LAST_USER
-LAST_IP=localhost

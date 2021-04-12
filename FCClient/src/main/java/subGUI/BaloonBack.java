@@ -212,6 +212,7 @@ public class BaloonBack extends JPanel {
 				public void paintComponent(Graphics g) {
 					Graphics2D g2D = (Graphics2D) g.create();
 					Registry.render(g2D);
+//					g2D.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 					
 					g2D.setFont(getFont());
 					g2D.setColor(new Color(0.0f, 0.0f, 0.0f, type == localMessageType.INFO ? 0.8f : 0.35f));

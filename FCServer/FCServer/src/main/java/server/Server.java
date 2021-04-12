@@ -18,6 +18,10 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
+
+import door.MainClass;
 import door.Message.MessageDTO;
 import door.Message.MessageDTO.GlobalMessageType;
 import gui.MonitorFrame;
@@ -26,6 +30,7 @@ import gui.MonitorFrame;
 @SuppressWarnings("serial")
 public class Server implements iServerConnector, Runnable {
 	private static SimpleDateFormat dateFormat = new SimpleDateFormat("<dd.MM.yyyy HH:mm:ss>");
+	private static Logger log;
 	
 	private static List<ClientHandler> nonAutorizedClients = new ArrayList<ClientHandler>();
 	private static Map<String, ClientHandler> clientsMap = new LinkedHashMap<String, ClientHandler>();
@@ -58,13 +63,17 @@ public class Server implements iServerConnector, Runnable {
 	private static final int MAX_CLIENTS = 32;
 	
 	
-	public Server() {server = this;}
+	public Server() {
+		server = this;
+		log = LogManager.getLogger(Server.class);
+	}
 
 	public static Server getAccess() {return server;}
 
 	
 	public synchronized void resetConnections() {
 		MonitorFrame.toConsole("Kick all clients...");
+		log.warn("All clients was kicked.");
 		
 		for (Entry<String, ClientHandler> entry : clientsMap.entrySet()) {entry.getValue().kick();}
 		clientsMap.clear();		
@@ -100,7 +109,10 @@ public class Server implements iServerConnector, Runnable {
 		} catch (UnknownHostException e) {onServerException(e);
 		} catch (SocketException e) {onServerException(e);
 		} catch (IOException e) {onServerException(e);
-		} finally {MonitorFrame.toConsole("Server.run(): Server thread is shut down.");}
+		} finally {
+			log.warn("Server is shutdown.");
+			MonitorFrame.toConsole("Server.run(): Server thread is shut down.");
+		}
 	}
 	
 	@Override
@@ -108,12 +120,14 @@ public class Server implements iServerConnector, Runnable {
 		DataBase.loadDataBase();
 		
 		serverEx = Executors.newSingleThreadExecutor();
+		log.info("Start the clients-income reading thread..");
 		serverEx.execute(this);
 		serverEx.shutdown();
 	}
 
 	@Override
 	public synchronized void stop() {
+		log.warn("Server shutting down...");
 		resetConnections();
 		MonitorFrame.toConsole("Closing server socket...");
 		if (sSocket != null) {
@@ -121,7 +135,7 @@ public class Server implements iServerConnector, Runnable {
 			} catch (IOException e) {e.printStackTrace();}
 		}
 		serverEx.shutdown();
-		MonitorFrame.toConsole("Server is shutdown.");
+		MonitorFrame.toConsole("Server has shutting down...");
 	}
 	
 	@Override
@@ -136,6 +150,7 @@ public class Server implements iServerConnector, Runnable {
 	public synchronized void onClientConnection(ClientHandler ch) {
 		MonitorFrame.toConsole("Новый клиент пытается выполнить подключение...");
 		nonAutorizedClients.add(ch);
+		log.trace("A new client connected.");
 	}
 
 	@Override
@@ -150,11 +165,14 @@ public class Server implements iServerConnector, Runnable {
 					break;
 				}
 		}
+		
+		log.trace("Client " + clientName + " was disconnected.");
 	}
 
 	@Override
 	public synchronized void onServerException(Exception e) {
 		if (!e.getMessage().equals("Socket closed")) {
+			log.error("Server has Exception!", e);
 			MonitorFrame.toConsole("Server has Exception: '" + e.getMessage() + "' (" + e.getCause() + ").");
 			e.printStackTrace();
 		}
