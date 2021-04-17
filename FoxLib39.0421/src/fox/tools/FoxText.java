@@ -1,4 +1,4 @@
-package fox.tools;
+package tools;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -6,17 +6,13 @@ import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 
-import fox.builders.FoxFontBuilder;
+import builders.FoxFontBuilder;
 
 
-public class FoxText {
-	static FoxFontBuilder ffb;
-	
+public class FoxText {	
 	public static Graphics2D draw(String text, Graphics2D g2D, Font font, Rectangle2D r, Color c) {return draw(text, g2D, font, r, c, null);}
 	
-	public static Graphics2D draw(String text, Graphics2D g2D, Font font, Rectangle2D r, Color c, Color c2) {
-		ffb = new FoxFontBuilder();
-				
+	public static Graphics2D draw(String text, Graphics2D g2D, Font font, Rectangle2D r, Color c, Color c2) {				
 		Rectangle2D fontRect = FoxFontBuilder.getStringBounds(g2D, text);
 		float fontSize = font.getSize();
 		g2D.setFont(font);
@@ -29,7 +25,6 @@ public class FoxText {
 		}
 		
 		fontRect = null;
-		ffb = null;
 		return g2D;
 	}
 

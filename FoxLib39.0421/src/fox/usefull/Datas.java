@@ -1,4 +1,4 @@
-package fox.usefull;
+package usefull;
 
 public class Datas {
 

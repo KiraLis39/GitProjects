@@ -1,4 +1,4 @@
-package fox.builders;
+package builders;
 
 import java.awt.Dimension;
 import java.awt.Graphics2D;
@@ -19,7 +19,9 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import javax.imageio.ImageIO;
-import fox.adds.Out;
+
+import adds.Out;
+import adds.Out.LEVEL;
 
 
 public class ResManager {
@@ -55,13 +57,13 @@ public class ResManager {
 						}
 					}
 					
-					log(1, "clearCash: was removed " + clearedCount + " elements from cash.");
+					log(LEVEL.ACCENT, "clearCash: was removed " + clearedCount + " elements from cash.");
 				} else {
-					log(1, "clearCash: cash has only " + cash.size() + "elements (MIN_ELEMENTS = " + MIN_ELEMENTS_CASH_COUNT_TO_CLEARING + "), than been full-cleared.");
+					log(LEVEL.ACCENT, "clearCash: cash has only " + cash.size() + "elements (MIN_ELEMENTS = " + MIN_ELEMENTS_CASH_COUNT_TO_CLEARING + "), than been full-cleared.");
 					cash.clear();
 				}
 			} catch (Exception e) {
-				log(2, "Was catched memory overlap! Hooray! usingLong > " + (USED_MEMORY / 1048576L) + " / " + (MAX_MEMORY / 1048576L) + " >> " + e.getLocalizedMessage());
+				log(LEVEL.ERROR, "Was catched memory overlap! Hooray! usingLong > " + (USED_MEMORY / 1048576L) + " / " + (MAX_MEMORY / 1048576L) + " >> " + e.getLocalizedMessage());
 				e.printStackTrace();
 			}
 		}
@@ -176,7 +178,7 @@ public class ResManager {
 						return null;
 					}
 				} else {
-					log(3, "BufferedImage '" + name + "' not exist into ResourceManager!");
+					log(LEVEL.WARN, "BufferedImage '" + name + "' not exist into ResourceManager!");
 					return null;
 				}
 			}
@@ -229,9 +231,9 @@ public class ResManager {
 	public synchronized static Collection<File> getValuesSet() {return resourseLinksMap.values();}
 
 	
-	private static void log(String message) {log(0, message);}
+	private static void log(String message) {log(LEVEL.INFO, message);}
 	
-	private static void log(int i, String message) {
+	private static void log(LEVEL i, String message) {
 		if (logEnable) {Out.Print(ResManager.class, i, message);}
 	}
 	

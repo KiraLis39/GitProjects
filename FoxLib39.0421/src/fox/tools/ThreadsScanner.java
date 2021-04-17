@@ -1,12 +1,11 @@
-package fox.tools;
+package tools;
 
-import fox.adds.Out;
+import adds.Out;
+import adds.Out.LEVEL;
 
-public class ThreadsScanner {
-	
+public class ThreadsScanner {	
 	private ThreadGroup currentGroup;
 	private Thread[] lstThreads;
-
 	
 	public ThreadsScanner() {
 		currentGroup = Thread.currentThread().getThreadGroup();
@@ -15,7 +14,7 @@ public class ThreadsScanner {
 		currentGroup.enumerate(lstThreads);
 
 		for (int i = 0; i < currentGroup.activeCount(); i++) {
-			Out.Print(ThreadsScanner.class, 0, "Thread " + i + ": " + lstThreads[i].getName(), Thread.currentThread());
+			Out.Print(ThreadsScanner.class, LEVEL.ACCENT, "Thread " + i + ": " + lstThreads[i].getName(), Thread.currentThread());
 		}
 	}
 }

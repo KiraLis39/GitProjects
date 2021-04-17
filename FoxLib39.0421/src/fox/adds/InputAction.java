@@ -1,4 +1,4 @@
-package fox.adds;
+package adds;
 
 import java.awt.Window;
 import java.util.Arrays;

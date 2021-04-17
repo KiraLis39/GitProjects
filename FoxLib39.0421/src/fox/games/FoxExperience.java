@@ -1,4 +1,4 @@
-package fox.games;
+package games;
 
 
 public class FoxExperience {

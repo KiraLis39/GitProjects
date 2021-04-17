@@ -1,4 +1,4 @@
-package fox.adds;
+package adds;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -23,7 +23,8 @@ import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.border.EmptyBorder;
-import fox.builders.FoxFontBuilder;
+
+import builders.FoxFontBuilder;
 
 
 @SuppressWarnings("serial")

@@ -1,4 +1,4 @@
-package fox.games;
+package games;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -9,11 +9,12 @@ import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
-import fox.builders.ResManager;
+
+import builders.ResManager;
 
 
 public class FoxCursor {
-	public static Cursor createCursor(String string) {
+	public static java.awt.Cursor createCursor(String string) {
 		BufferedImage ico = ResManager.getBImage(string);
 		if (ico == null) {
 			System.err.println("fox.games.FoxCursors (getCursor): Cursor " + string + " has not found!");

@@ -1,4 +1,4 @@
-package fox.builders;
+package builders;
 
 import java.awt.Font;
 import java.awt.Graphics;
@@ -12,7 +12,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import javax.swing.JOptionPane;
-import fox.adds.Out;
+
+import adds.Out;
+import adds.Out.LEVEL;
 
 
 public class FoxFontBuilder {
@@ -24,8 +26,6 @@ public class FoxFontBuilder {
 	private static File fontsDirectory;
 		
 
-	public FoxFontBuilder() {this(null);}
-	
 	public FoxFontBuilder(File fontsDir) {
 		if (fontsDir != null) {fontsDirectory = fontsDir;}
 		
@@ -63,11 +63,11 @@ public class FoxFontBuilder {
 	    System.out.println("\n");
 		
 	    if (!fontExist) {
-	    	Out.Print(FoxFontBuilder.class, 3, "Font '" + fArr.get(ID) + "' not exists in this OS! Please setup it if you can.");
+	    	Out.Print(FoxFontBuilder.class, LEVEL.ERROR, "Font '" + fArr.get(ID) + "' not exists in this OS! Please setup it if you can.");
 	    	if (fontsDirectory == null) {return new Font(fArr.get(defaultFont.ordinal()), isBold ? Font.BOLD : Font.PLAIN, fontSize);} // если шрифт не зарегистрирован и не указана дирректория с требуемым - возвращаем шрифт по-умолчанию.
 	    	
 	    	try {
-	    		Out.Print(FoxFontBuilder.class, 1, "Now will be setup income fonts pack...");
+	    		Out.Print(FoxFontBuilder.class, LEVEL.ACCENT, "Now will be setup income fonts pack...");
 //	    		InputStream stream = ClassLoader.getSystemClassLoader().getResourceAsStream("roboto-bold.ttf");
 //	    		Font font = Font.createFont(Font.TRUETYPE_FONT, stream).deriveFont(48f);
 //	    		Font font = Font.createFont(Font.TRUETYPE_FONT, new File("Fonts\\custom_font.ttf")).deriveFont(12f);
@@ -76,14 +76,14 @@ public class FoxFontBuilder {
 					File[] fonts = fontDir.listFiles();
 					for (File font : fonts) {
 						try {GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(Font.createFont(Font.TRUETYPE_FONT, font));
-						} catch (Exception e) {Out.Print(FoxFontBuilder.class, 2, "Не удалось подключить шрифт " + font.getName() + " как TRUETYPE." + e.getMessage());}
+						} catch (Exception e) {Out.Print(FoxFontBuilder.class, LEVEL.ERROR, "Не удалось подключить шрифт " + font.getName() + " как TRUETYPE." + e.getMessage());}
 					}
 				}
 	    	} catch (Exception e) {
 				e.printStackTrace();
-	    		Out.Print(FoxFontBuilder.class, 3, "Error with font existing! Set fonts dir by methode:  setFontsDirectory(File fontsDirectory) where fontsDirectory is a folder with fonts from FoxLib jar archive.fonts");
-	    		if (!fontsDirectory.exists()) {Out.Print(FoxFontBuilder.class, 3, "FAILED!");	    			
-	    		} else {Out.Print(FoxFontBuilder.class, 3, "Success!");}
+	    		Out.Print(FoxFontBuilder.class, LEVEL.ERROR, "Error with font existing! Set fonts dir by methode:  setFontsDirectory(File fontsDirectory) where fontsDirectory is a folder with fonts from FoxLib jar archive.fonts");
+	    		if (!fontsDirectory.exists()) {Out.Print(FoxFontBuilder.class, LEVEL.ERROR, "FAILED!");	    			
+	    		} else {Out.Print(FoxFontBuilder.class, LEVEL.INFO, "Success!");}
 	    	}
 
     		return new Font(fArr.get(defaultFont.ordinal()), isBold ? Font.BOLD : Font.PLAIN, fontSize);	    	

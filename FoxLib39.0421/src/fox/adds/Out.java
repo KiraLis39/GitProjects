@@ -1,6 +1,5 @@
-package fox.adds;
+package adds;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -8,22 +7,23 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Stack;
 
 
-public class Out implements Closeable {
-	public static enum levels {FULL, INFO, WARNS, ERRORS, CRITICAL}
-	static levels errLevel = levels.FULL;
-	private static final int SIMPLE = 0, ACCENT = 1, WARN = 2, ERROR = 3, CRITICAL = 4;	
+public class Out {
+	public static enum LEVEL {DEBUG, INFO, ACCENT, WARN, ERROR, CRITICAL}
+	static LEVEL errLevel = LEVEL.DEBUG;
 	
 	private final Charset charset = StandardCharsets.UTF_8;
 	private SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy"), fnc = new SimpleDateFormat("HH.mm.ss");
 	static Thread LogThread;
 	static Stack<String> messageStack = new Stack<String>();
-	static Stack<Integer> typeStack = new Stack<Integer>();
+	static Deque<LEVEL> typeDeque = new ArrayDeque<LEVEL>();
+	private LEVEL type;
 	private static File HTMLdir = new File("./log/"), HTMLlog;
-	
-	private int type, logCount = 0;
+	private int logCount = 0;
 	int sleepTime = 333;
 	Boolean free = true;
 	private String currentTime, currentDate, address;
@@ -38,13 +38,13 @@ public class Out implements Closeable {
 			LogThread = new Thread(new Runnable() {
 				@Override
 				public void run() {
-					Print("INFO: Out", 1, Thread.currentThread().getName() + " is started with write-level " + errLevel.name() + " (#" + errLevel.ordinal() + ")");
+					Print("INFO: Out", LEVEL.INFO, Thread.currentThread().getName() + " is started with write-level " + errLevel.name() + " (#" + errLevel.ordinal() + ")");
 					if (!checkFiles()) {throw new RuntimeException("ERR: Out: Files creating is fail!");}
 					
 					while (enabled || !Thread.currentThread().isInterrupted()) {
 						if (messageStack.isEmpty()) {
-							try {Thread.sleep(sleepTime);} catch (InterruptedException ie) {Thread.currentThread().interrupt();
-							} catch (Exception e) {e.printStackTrace();}
+							try {Thread.sleep(sleepTime);
+							} catch (InterruptedException ie) {Thread.currentThread().interrupt();}
 						} else {
 							if (free) {
 								free = false;
@@ -53,8 +53,8 @@ public class Out implements Closeable {
 								} else if (messageStack.size() > 15) {LogThread.setPriority(Thread.NORM_PRIORITY);
 								} else {LogThread.setPriority(Thread.MIN_PRIORITY);}
 								
-								if (Thread.currentThread().getPriority() == 10) {System.err.println("Out trhead in Hight priority by stacks size: " + messageStack.size());}
-								if (typeStack.size() != messageStack.size()) {System.err.println("WARN: Out: working: messageArray has size: " + messageStack.size() + ", but typeArray`s size: " + typeStack.size());}
+//								if (Thread.currentThread().getPriority() == 10) {System.err.println("Out trhead in Hight priority by stacks size: " + messageStack.size());}
+								if (typeDeque.size() != messageStack.size()) {System.err.println("WARN: Out messageArray has size: " + messageStack.size() + ", but typeDeque`s size: " + typeDeque.size());}
 								
 								logHTML();
 							}
@@ -64,8 +64,8 @@ public class Out implements Closeable {
 						}
 					}
 					
-					Print("INFO: Out", 1, Thread.currentThread().getName() + " was stopped.");
-//					close();
+					Print("INFO: Out", LEVEL.ACCENT, Thread.currentThread().getName() + " was stopped.");
+					close();
 				}
 			})
 
@@ -124,7 +124,7 @@ public class Out implements Closeable {
 	}
 		
 	public void close() {
-		Print(Out.class, 1, "Out log process will be stoped by close() methode init.");
+		Print(Out.class, LEVEL.ACCENT, "Out log process will be stoped by close() methode init.");
 		try (OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(HTMLlog, true), charset)) {osw.write("</BODY></HTML>");
 		} catch (IOException e) {e.printStackTrace();
 		} finally {
@@ -136,7 +136,7 @@ public class Out implements Closeable {
 	synchronized void logHTML() {
 		try (OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(HTMLlog, true), charset)) {
 			currentTime = fnc.format(System.currentTimeMillis());
-			type = typeStack.pop();
+			type = typeDeque.pollLast();
 			address = messageStack.pop();
 
 			osw.write(
@@ -144,15 +144,17 @@ public class Out implements Closeable {
 					"<font style='font-family:consolas,arial,garamond;font-size:12px;'>");
 			
 			switch (type) {
-				case 0: osw.write("<font color='#000'>" + logCount + ") " + address);
+				case DEBUG: osw.write("<font color='#666'>" + logCount + ") " + address);
+					break;	
+				case INFO: osw.write("<font color='#000'>" + logCount + ") " + address);
+					break;	
+				case ACCENT: osw.write("<font color='#0094de'>" + logCount + ") " + address);
 					break;						
-				case 1: osw.write("<font color='#0094de'>" + logCount + ") " + address);
+				case WARN: osw.write("<font color='#e0a800'>" + logCount + ") " + address);
 					break;						
-				case 2: osw.write("<font color='#e0a800'>" + logCount + ") " + address);
+				case ERROR: osw.write("<font color='#bf4c28'><h3>" + logCount + ") " + address + "</h>");
 					break;						
-				case 3: osw.write("<font color='#bf4c28'><h3>" + logCount + ") " + address + "</h>");
-					break;						
-				default:	osw.write("<font color='#ff0000'><h2>" + logCount + ") " + address + "</h>");
+				default:	osw.write("<font color='#ff0000'><h2>" + logCount + ") " + address + "</h>"); // CRITICAL
 			}
 			
 			osw.write("</p></font>\n");
@@ -163,37 +165,45 @@ public class Out implements Closeable {
 		}
 	}
 	
-	public synchronized static void Print(String message) {Print(Out.class, 0, message, Thread.currentThread());}	
-	public synchronized static void Print(Class<?> clazz, int level, Exception e) {Print(clazz, level, e.getStackTrace());}	
-	public synchronized static void Print(Class<?> clazz, int level, Object[] messages) {Print(clazz.getName(), level, messages);}	
-	public synchronized static void Print(Class<?> clazz, int level, String message) {Print(clazz, level, message, Thread.currentThread());}
-	public synchronized static void Print(Class<?> clazz, int level, String message, Thread srcThread) {Print(clazz.getName() + " -> " + srcThread.getStackTrace()[1].getMethodName(), level, message);}
-	public synchronized static void Print(String address, int level, Object[] messages) {
-		if (isEnabled()) {for (int i = 0; i < messages.length; i++) {Print(address, level, messages[i].toString());}}
+	public synchronized static void Print(String message) {Print(Out.class, LEVEL.INFO, message, Thread.currentThread());}	
+	public synchronized static void Print(Class<?> clazz, Exception e) {Print(clazz, LEVEL.ERROR, e.getStackTrace());}
+	public synchronized static void Print(Class<?> clazz, LEVEL level, Exception e) {Print(clazz, level, e.getStackTrace());}	
+	public synchronized static void Print(Class<?> clazz, LEVEL level, Object[] messages) {Print(clazz.getName(), level, messages);}	
+	public synchronized static void Print(Class<?> clazz, LEVEL level, String message) {Print(clazz, level, message, Thread.currentThread());}
+	public synchronized static void Print(Class<?> clazz, LEVEL level, String message, Thread srcThread) {Print(clazz.getName() + " -> " + srcThread.getStackTrace()[1].getMethodName(), level, message);}
+	public synchronized static void Print(String address, LEVEL level, Object[] messages) {
+		for (int i = 0; i < messages.length; i++) {Print(address, level, messages[i].toString());}
 	}
-	@SuppressWarnings("resource")
-	synchronized static void Print(String address, int level, String message) {
+	
+	synchronized static void Print(String address, LEVEL level, String message) {
 		if (isEnabled()) {
 			if (message.endsWith("\n")) {thanNextLine = true;}
 			if (message.startsWith("\n")) {System.out.println(); message = message.substring(2, message.length());}
 			
 			switch (level) {
-				case ACCENT:		System.out.println("ATTENTION:\t" + address + ": " + message);
+				case CRITICAL: throw new RuntimeException("!!! CRITICAL ERROR !!!\n" + address + ": " + message);
+				
+				case ERROR:		System.err.println("[ERROR]\t" + address + ": " + message);
 					break;
-				case WARN: 		System.err.println("WARN:\t" + address + ": " + message);
+					
+				case WARN: 		System.err.println("[WARN]\t" + address + ": " + message);
 					break;
-				case ERROR:		System.err.println("ERROR:\t" + address + ": " + message);
+					
+				case ACCENT:	System.out.println("[ATTENTION]\t" + address + ": " + message);
 					break;
-				case CRITICAL: 	throw new RuntimeException("!!! CRITICAL ERROR !!!\n" + address + ": " + message);
-				case SIMPLE:	
-				default:				System.out.println(">>>\t" + address + ": " + message);
+				
+				case INFO:			System.out.println("[INFO]\t" + address + ": " + message);
+					break;
+					
+				case DEBUG: 
+				default:				System.out.println("[DEBUG]\t" + address + ": " + message);
 			}
 			
 			if (thanNextLine) {System.out.println(); thanNextLine = false;}
 			
 			if (LogThread == null) {new Out();}
-			if (level >= errLevel.ordinal()) {
-				typeStack.insertElementAt(level, 0);
+			if (level.ordinal() >= errLevel.ordinal()) {
+				typeDeque.addFirst(level);
 				messageStack.insertElementAt(address + ": " + message, 0);
 			}
 		}
@@ -206,8 +216,8 @@ public class Out implements Closeable {
 	public static int getLogsCoutAllow() {return logsCountAllow;}
 	public static void setLogsCoutAllow(int _logsCountAllow) {logsCountAllow = _logsCountAllow;}
 	
-	public synchronized static void setErrorLevel(levels lvl) {errLevel = lvl;}
-	public static levels getErrorLevel() {return errLevel;}
+	public synchronized static void setErrorLevel(LEVEL lvl) {errLevel = lvl;}
+	public static LEVEL getErrorLevel() {return errLevel;}
 
 	public static boolean isEnabled() {return enabled;}
 	@SuppressWarnings("resource")

@@ -1,4 +1,4 @@
-package fox.games;
+package games;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -15,8 +15,9 @@ import javax.swing.AbstractAction;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
-import fox.adds.InputAction;
-import fox.adds.Out;
+import adds.InputAction;
+import adds.Out;
+import adds.Out.LEVEL;
 
 
 @SuppressWarnings("serial")
@@ -46,10 +47,10 @@ public class FoxLogo implements Runnable {
 	public void start(BufferedImage[] textureFilesMassive, int _breakKey) {
 		if (textureFilesMassive == null) {throw new RuntimeException("StartLogoRenderer: start: Error. Textures massive is NULL.");}
 		
-		Out.Print(FoxLogo.class, 0, "Set StartLogo`s breakKey to " + _breakKey, Thread.currentThread());
+		Out.Print(FoxLogo.class, LEVEL.INFO, "Set StartLogo`s breakKey to " + _breakKey, Thread.currentThread());
 		breakKey = _breakKey;
 
-		Out.Print(FoxLogo.class, 0, "Load StartLogo`s images count: " + textureFilesMassive.length, Thread.currentThread());
+		Out.Print(FoxLogo.class, LEVEL.INFO, "Load StartLogo`s images count: " + textureFilesMassive.length, Thread.currentThread());
 		images = textureFilesMassive;
 
 		canvasEngine = new Thread(this);

@@ -1,4 +1,4 @@
-package fox.games;
+package games;
 
 import java.awt.AlphaComposite;
 import java.awt.Color;
@@ -11,8 +11,9 @@ import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import fox.builders.FoxFontBuilder;
-import fox.builders.FoxFontBuilder.FONT;
+
+import builders.FoxFontBuilder;
+import builders.FoxFontBuilder.FONT;
 
 
 public class FoxTipsEngine {

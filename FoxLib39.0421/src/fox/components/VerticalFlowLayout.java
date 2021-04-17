@@ -1,4 +1,4 @@
-package fox.components;
+package components;
 
 import java.awt.Component;
 import java.awt.Container;
@@ -184,7 +184,7 @@ public class VerticalFlowLayout implements LayoutManager, Serializable {
 	 * @param name the name of the component
 	 * @param comp the component to be added
 	 */
-	public void addLayoutComponent(String name, Component comp) {}
+	public void addLayoutComponent(String name, Component comp) {/* VOID */}
 
 	/**
 	 * Removes the specified component from the layout. Not used by this class.
@@ -192,7 +192,7 @@ public class VerticalFlowLayout implements LayoutManager, Serializable {
 	 * @param comp the component to remove
 	 * @see java.awt.Container#removeAll
 	 */
-	public void removeLayoutComponent(Component comp) {}
+	public void removeLayoutComponent(Component comp) {/* VOID */}
 
 	/**
 	 * Returns the preferred dimensions for this layout given the <i>visible</i>

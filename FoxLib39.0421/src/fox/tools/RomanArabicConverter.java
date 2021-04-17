@@ -1,4 +1,4 @@
-package fox.tools;
+package tools;
 
 import java.util.Arrays;
 import java.util.Comparator;

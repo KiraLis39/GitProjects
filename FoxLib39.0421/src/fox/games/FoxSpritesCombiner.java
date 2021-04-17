@@ -1,20 +1,19 @@
-package fox.games;
+package games;
 
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import fox.adds.Out;
+
+import adds.Out;
+import adds.Out.LEVEL;
 
 
 public class FoxSpritesCombiner {
-	private Map<String, BufferedImage[]> sptitesMap;
-	
-	
-	public FoxSpritesCombiner() {sptitesMap = new LinkedHashMap<String, BufferedImage[]>();}
-	
-	public BufferedImage[] addSpritelist(String spriteListName, BufferedImage image, int wCount, int hCount) {
+	private static Map<String, BufferedImage[]> sptitesMap = new LinkedHashMap<String, BufferedImage[]>();
+		
+	public static BufferedImage[] addSpritelist(String spriteListName, BufferedImage image, int wCount, int hCount) {
 		BufferedImage[] result = null;
 		
 		if (spriteListName.equals("") || image == null || wCount <= 0 || hCount <= 0) {
@@ -25,7 +24,7 @@ public class FoxSpritesCombiner {
 			if (!sptitesMap.containsKey(spriteListName)) {
 				try{sptitesMap.put(spriteListName, result = loadAndCut(image, wCount, hCount));} catch (Exception e) {e.printStackTrace();}
 			} else {
-				Out.Print(FoxSpritesCombiner.class, 2, "The key '" + spriteListName + "' exist into map already.", Thread.currentThread());
+				Out.Print(FoxSpritesCombiner.class, LEVEL.WARN, "The key '" + spriteListName + "' exist into map already.", Thread.currentThread());
 				return getSprites(spriteListName);
 			}
 		}
@@ -78,14 +77,14 @@ public class FoxSpritesCombiner {
 		return result;
 	}
 
-	public BufferedImage[] getSprites(String spriteName) {
+	public static BufferedImage[] getSprites(String spriteName) {
 		if (sptitesMap == null) {throw new RuntimeException("FoxSpritesCombiner: getSprites(): This map is NULL. Would You create one?");}
 		if (sptitesMap.get(spriteName) == null) {throw new RuntimeException("fox.games.FoxSpritesCombiner: getSprites(): This map.get(spriteName) is NULL. Its not good.");}
 
 		return sptitesMap.get(spriteName);
 	}
 
-	public void removeSprite(String spriteName) {
+	public static void removeSprite(String spriteName) {
 		if (sptitesMap == null) {throw new RuntimeException("FoxSpritesCombiner: removeSprite(): This map is NULL. Would You create one?");}
 		if (sptitesMap.get(spriteName) == null) {
 			Out.Print("fox.games.FoxSpritesCombiner: removeSprite(): Sprite " + spriteName + " is not exist here.");

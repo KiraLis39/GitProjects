@@ -1,4 +1,4 @@
-package fox.tools;
+package tools;
 
 import java.awt.Toolkit;
 import java.io.File;
