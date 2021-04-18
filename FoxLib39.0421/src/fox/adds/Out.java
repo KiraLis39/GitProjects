@@ -14,26 +14,29 @@ import java.util.Stack;
 
 public class Out {
 	public static enum LEVEL {DEBUG, INFO, ACCENT, WARN, ERROR, CRITICAL}
-	static LEVEL errLevel = LEVEL.DEBUG;
+	private static LEVEL errLevel = LEVEL.DEBUG; // уровень, от которого сообщения будут обрабатываться
 	
 	private final Charset charset = StandardCharsets.UTF_8;
 	private SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy"), fnc = new SimpleDateFormat("HH.mm.ss");
-	static Thread LogThread;
-	static Stack<String> messageStack = new Stack<String>();
-	static Deque<LEVEL> typeDeque = new ArrayDeque<LEVEL>();
-	private LEVEL type;
+	
+	private static Stack<String> messageStack = new Stack<String>();
+	private static Deque<LEVEL> typeDeque = new ArrayDeque<LEVEL>();
 	private static File HTMLdir = new File("./log/"), HTMLlog;
-	private int logCount = 0;
-	int sleepTime = 333;
-	Boolean free = true;
+	private int logCount = 0; // счетчик сообщений в логе
+	
+	private static Thread LogThread;
+	private int sleepTime = 250;
+	
+	private boolean free = true;
 	private String currentTime, currentDate, address;
 	
-	private static int logsCountAllow = 10;	
-	static Boolean enabled = true;
+	private static int logsCountAllow = 10;	// сколько логов хранить по-умолчанию
+	private static boolean enabled = true;
 	private static Boolean thanNextLine = false;
-
+	private static FoxConsole connectedFoxConsole; // возможность подключить к трассировке FoxConsole
 	
-	public Out() {
+	
+ 	public Out() {
 		if (LogThread == null) {
 			LogThread = new Thread(new Runnable() {
 				@Override
@@ -53,7 +56,6 @@ public class Out {
 								} else if (messageStack.size() > 15) {LogThread.setPriority(Thread.NORM_PRIORITY);
 								} else {LogThread.setPriority(Thread.MIN_PRIORITY);}
 								
-//								if (Thread.currentThread().getPriority() == 10) {System.err.println("Out trhead in Hight priority by stacks size: " + messageStack.size());}
 								if (typeDeque.size() != messageStack.size()) {System.err.println("WARN: Out messageArray has size: " + messageStack.size() + ", but typeDeque`s size: " + typeDeque.size());}
 								
 								logHTML();
@@ -65,7 +67,6 @@ public class Out {
 					}
 					
 					Print("INFO: Out", LEVEL.ACCENT, Thread.currentThread().getName() + " was stopped.");
-					close();
 				}
 			})
 
@@ -81,35 +82,32 @@ public class Out {
 	}
 	
 	boolean checkFiles() {
-		int tryes = 0;
+		// Пытаемся максимум три раза создать необходимую директорию логов:
+		int tryes = 3;
 		do {
-			tryes++;
+			tryes--;
 			HTMLdir.mkdirs();
-		} while (!HTMLdir.exists() && tryes < 10);
+		} while (!HTMLdir.exists() && tryes > 0);
 		if (!HTMLdir.exists()) {throw new RuntimeException("The HTMLdir '" + HTMLdir + "' can`t created!");}
 		
 		// удаляем лишние файлы, если их больше, чем разрешено хранить:
-		File[] logsCount = HTMLdir.listFiles();
-		if (logsCount.length >= logsCountAllow) {
-			for (int i = 0; i < logsCount.length - logsCountAllow; i++) {logsCount[i].delete();}
-		}
-		logsCount = null;
+		logsCleaner();
 
+		// Готовим новый лог-файл:
 		String timeData = fnc.format(System.currentTimeMillis());		
 		currentDate = sdf.format(System.currentTimeMillis());
 		HTMLlog = new File(HTMLdir.getPath() + "/" + timeData + " log.html");
 		
-		tryes = 0;
-		while (!HTMLlog.exists() && tryes < 10) {
-			tryes++;
-			
+		// Пытаемся максимум три раза создать и открыть лог-файл:
+		tryes = 3;
+		while (!HTMLlog.exists() && tryes > 0) {
+			tryes--;			
 			try {
 				HTMLlog.createNewFile();
 				logFileOpen();
 			} catch (IOException e) {
-				System.err.println("ERR: Out: checkFiles: Creating \"" + HTMLlog + "\" is FAILED!");
+				System.err.println("ERR: Out: checkFiles: Creating or opening \"" + HTMLlog + "\" is FAILED!");
 				e.printStackTrace();
-				return false;
 			}
 		}
 		if (!HTMLlog.exists()) {throw new RuntimeException("The HTMLlog '" + HTMLlog + "' can`t created!");}
@@ -117,33 +115,31 @@ public class Out {
 		return true;
 	}
 		
+	private static void logsCleaner() {
+		File[] logsCount = HTMLdir.listFiles();
+		if (logsCount.length >= logsCountAllow) {
+			for (int i = 0; i < logsCount.length - logsCountAllow; i++) {logsCount[i].delete();}
+		}
+		logsCount = null;
+	}
+
 	private void logFileOpen() {
 		try (OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(HTMLlog, true), charset)) {
 			osw.write("<!DOCTYPE html><HTML lang=\"ru\"><HEAD><meta charset=\"UTF-8\"><title>" + currentDate + "</title></HEAD><BODY>");
 		} catch (Exception e) {e.printStackTrace();}
 	}
-		
-	public void close() {
-		Print(Out.class, LEVEL.ACCENT, "Out log process will be stoped by close() methode init.");
-		try (OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(HTMLlog, true), charset)) {osw.write("</BODY></HTML>");
-		} catch (IOException e) {e.printStackTrace();
-		} finally {
-			enabled = false;
-			LogThread.interrupt();
-		}
-	}
 	
+	// вывод в файл лога:
 	synchronized void logHTML() {
 		try (OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(HTMLlog, true), charset)) {
 			currentTime = fnc.format(System.currentTimeMillis());
-			type = typeDeque.pollLast();
 			address = messageStack.pop();
 
 			osw.write(
 					"<p style='font-family:arial,fixedsys,consolas;font-size:10px;font color=#000'>" + currentTime + "<br>" + 
 					"<font style='font-family:consolas,arial,garamond;font-size:12px;'>");
 			
-			switch (type) {
+			switch (typeDeque.pollLast()) {
 				case DEBUG: osw.write("<font color='#666'>" + logCount + ") " + address);
 					break;	
 				case INFO: osw.write("<font color='#000'>" + logCount + ") " + address);
@@ -165,6 +161,7 @@ public class Out {
 		}
 	}
 	
+	// базовая печать сообщений в консоль (до вывода в файл лога):
 	public synchronized static void Print(String message) {Print(Out.class, LEVEL.INFO, message, Thread.currentThread());}	
 	public synchronized static void Print(Class<?> clazz, Exception e) {Print(clazz, LEVEL.ERROR, e.getStackTrace());}
 	public synchronized static void Print(Class<?> clazz, LEVEL level, Exception e) {Print(clazz, level, e.getStackTrace());}	
@@ -176,30 +173,42 @@ public class Out {
 	}
 	
 	synchronized static void Print(String address, LEVEL level, String message) {
+		if (level == LEVEL.CRITICAL) {throw new RuntimeException("!!! CRITICAL ERROR !!!\n" + address + ": " + message);}
+		
 		if (isEnabled()) {
+			if (message.startsWith("\n")) {
+				System.out.println();
+				message = message.substring(1, message.length());
+			}
 			if (message.endsWith("\n")) {thanNextLine = true;}
-			if (message.startsWith("\n")) {System.out.println(); message = message.substring(2, message.length());}
 			
+			String resultString;
 			switch (level) {
-				case CRITICAL: throw new RuntimeException("!!! CRITICAL ERROR !!!\n" + address + ": " + message);
-				
-				case ERROR:		System.err.println("[ERROR]\t" + address + ": " + message);
+				case ERROR:		resultString = "[ERROR]\t" + address + ": " + message;
 					break;
 					
-				case WARN: 		System.err.println("[WARN]\t" + address + ": " + message);
+				case WARN: 		resultString = "[WARN]\t" + address + ": " + message;
 					break;
 					
-				case ACCENT:	System.out.println("[ATTENTION]\t" + address + ": " + message);
+				case ACCENT:	resultString = "[ATTENTION]\t" + address + ": " + message;
 					break;
 				
-				case INFO:			System.out.println("[INFO]\t" + address + ": " + message);
+				case INFO:			resultString = "[INFO]\t" + address + ": " + message;
 					break;
 					
 				case DEBUG: 
-				default:				System.out.println("[DEBUG]\t" + address + ": " + message);
+				default:				resultString = "[DEBUG]\t" + address + ": " + message;
 			}
+
+			if (level == LEVEL.ERROR || level == LEVEL.WARN) {System.err.println(resultString);				
+			} else {System.out.println(resultString);}
 			
-			if (thanNextLine) {System.out.println(); thanNextLine = false;}
+			if (connectedFoxConsole != null) {connectedFoxConsole.appendToConsole(resultString);}
+			
+			if (thanNextLine) {
+				System.out.println(); 
+				thanNextLine = false;
+			}
 			
 			if (LogThread == null) {new Out();}
 			if (level.ordinal() >= errLevel.ordinal()) {
@@ -209,22 +218,27 @@ public class Out {
 		}
 	}
 
-	
+	// изменение папки логов по-умолчанию:
 	public static String getLogPath() {return HTMLdir.getPath();}
 	public static File getLogFile() {return HTMLlog;}
 
+	// сколько максимально файлов лога хранить:
 	public static int getLogsCoutAllow() {return logsCountAllow;}
 	public static void setLogsCoutAllow(int _logsCountAllow) {logsCountAllow = _logsCountAllow;}
 	
+	// от какого и выше уровня обрабатывать сообщения:
 	public synchronized static void setErrorLevel(LEVEL lvl) {errLevel = lvl;}
 	public static LEVEL getErrorLevel() {return errLevel;}
 
 	public static boolean isEnabled() {return enabled;}
-	@SuppressWarnings("resource")
-	public static void setEnabled(Boolean d) {
-		if (enabled.equals(d)) {return;}
+	public static void setEnabled(boolean d) {
+		if (enabled == d) {return;}
 		enabled = d;
 		
 		if (LogThread == null || !LogThread.isAlive()) {new Out();}
 	}
+
+	
+	// подключение FoxConsole для вывода всех сообщений туда параллельно:
+	public static void connectFoxConsole(FoxConsole cons) {connectedFoxConsole = cons;}
 }

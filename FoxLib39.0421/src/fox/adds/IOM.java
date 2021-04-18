@@ -8,6 +8,9 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Properties;
@@ -16,13 +19,13 @@ import adds.Out.LEVEL;
 
 
 public class IOM {
-	public static enum HEADERS {REGISTRY, CONFIG, USER_SAVE, LAST_USER, USER_LIST, SECURE, TEMP}
-	private static ArrayList<Properties> PropsArray = new ArrayList<Properties>(HEADERS.values().length);
+	public static enum HEADERS {REGISTRY, CONFIG, USER_SAVE, LAST_USER, USER_LIST, SECURE, TEMP} // несколько готовых примеров (можно задавать и свои, конечно)
+	private static ArrayList<Properties> PropsArray = new ArrayList<Properties>(HEADERS.values().length); // массив активных хранилищ
 	private static Charset codec = StandardCharsets.UTF_8;
-	private static Boolean consoleOut = false;
-	private static String DEFAULT_EMPTY_STRING = "none";
+	private static Boolean consoleOut = false; // трассировка в лог
+	private static String DEFAULT_EMPTY_STRING = "NA"; // чем будет значение при его отсутствии\создании без указания значения
 	
-
+	// подключение нового хранилища:
 	public synchronized static void add(Object propertiName, File PropertiFile) {
 		String name = propertiName.toString();
 
@@ -53,6 +56,7 @@ public class IOM {
 		}
 	}
 	
+	// установка\изменение значений в хранилище:
 	public synchronized static void set(Object propertiName, Object key, Object value) {
 		String name = propertiName.toString(), parameter = key.toString();
 		
@@ -74,6 +78,7 @@ public class IOM {
 		}
 	}
 
+	// первичная установка\проверка установленности значения:
 	public synchronized static void setIfNotExist(Object propertiName, Object existKey, Object defaultValue) {
 		String name = propertiName.toString(), parameter = existKey.toString();
 		
@@ -82,13 +87,14 @@ public class IOM {
 		} else {
 			for (int i = 0; i < PropsArray.size(); i++) {
 				if (!PropsArray.get(i).containsKey("propName")) {
-					debugOut(IOM.class, LEVEL.ERROR, "Каким-то образом проперчес " + PropsArray.get(i).toString() + " не имеет ключа с именем.");
+					debugOut(IOM.class, LEVEL.WARN, "Каким-то образом проперчес " + PropsArray.get(i).toString() + " не имеет ключа с именем.");
 					continue;
 				}
 				
 				if (PropsArray.get(i).getProperty("propName").equals(name)) {
-					if (PropsArray.get(i).containsKey(parameter)) {return;
-					} else {set(propertiName, existKey, defaultValue);}
+					// если хранилище имеет такое значение, и это не заглушка - просто выходим:
+					if (PropsArray.get(i).containsKey(parameter) && !PropsArray.get(i).get(parameter).equals(DEFAULT_EMPTY_STRING)) {return;
+					} else {set(propertiName, existKey, defaultValue);} // иначе устанавливаем новое значение.
 					return;
 				}
 			}
@@ -97,7 +103,7 @@ public class IOM {
 		}
 	}
 	
-	
+	// пытаемся взять булен из хранилища:
 	public synchronized static Boolean getBoolean(Object propertiName, Object key) {
 		if (!existProp(propertiName.toString())) {
 			showNotExistsErr(propertiName.toString());
@@ -117,7 +123,7 @@ public class IOM {
 			return false;
 		}
 	}
-	
+	// пытаемся взять дабл из хранилища:
 	public synchronized static Double getDouble(Object propertiName, Object key) {
 		if (!existProp(propertiName.toString())) {
 			showNotExistsErr(propertiName.toString());
@@ -139,7 +145,7 @@ public class IOM {
 		
 		return null;
 	}
-	
+	// берём стринг:
 	public synchronized static String getString(Object propertiName, Object key) {
 		if (!existProp(propertiName.toString())) {
 			showNotExistsErr(propertiName.toString());
@@ -153,7 +159,7 @@ public class IOM {
 		}
 		return PropsArray.get(ind).getProperty(key.toString());
 	}
-	
+	// пытаемся взять инт из хранилища:
 	public synchronized static Integer getInt(Object propertiName, Object key) {
 		if (!existProp(propertiName.toString())) {
 			showNotExistsErr(propertiName.toString());
@@ -176,10 +182,8 @@ public class IOM {
 		
 		return null;
 	}
-
-	public synchronized static void remove(Object propertiName, Object _key) {
-		String key = _key.toString();
-		
+    // удаление строки данных из хранилища:
+	public synchronized static void remove(Object propertiName, Object key) {
 		if (propertiName.toString().isEmpty() || propertiName.toString().isBlank()) {showWithoutNameErr(propertiName.toString());
 		} else {
 			int propCount = -1;
@@ -193,13 +197,14 @@ public class IOM {
 				}
 			}
 
-			if (propCount != -1) {
+			if (propCount == -1) {showNotExistsErr(propertiName.toString());
+			} else {
 				if (PropsArray.get(propCount).containsKey(key)) {PropsArray.get(propCount).remove(key);}
-			} else {showNotExistsErr(propertiName.toString());}
+			}
 		}
 	}
 	
-	
+	// сохранить конкретное хранилище на диск:
 	public synchronized static Boolean save(Object propertiName) {
 		for (Properties properties : PropsArray) {
 			if (properties.get("propName").equals(propertiName.toString())) {
@@ -218,13 +223,13 @@ public class IOM {
 		debugOut(IOM.class, LEVEL.WARN, "Не найден поток " + propertiName.toString() + ".");
 		return false;
 	}
-
+	// сохранить все активные хранилища на диск:
 	public synchronized static void saveAll() {
 		debugOut(IOM.class, LEVEL.INFO, "Каскадное сохранение всех файлов...");
 		for (Properties properties : PropsArray) {save(properties);}
 	}
 
-	
+	// загрузить конкретное хранилище из файла на диске:
 	public synchronized static Boolean load(Object propertiName) {
 		for (Properties properties : PropsArray) {
 			if (properties.get("propName").equals(propertiName.toString())) {
@@ -242,7 +247,7 @@ public class IOM {
 
 		return false;
 	}
-
+	// загрузить все хранилища из файлов на диске:
 	public synchronized static void loadAll() {
 		debugOut(IOM.class, LEVEL.INFO, "Каскадная загрузка всех файлов (перезагрузка проперчесов)...");
 		for (Properties properties : PropsArray) {load(properties);}
@@ -254,14 +259,14 @@ public class IOM {
 	private static void showWithoutKeyErr(Object data) {Out.Print(IOM.class, LEVEL.ERROR, "Запись в проперчес ключа невозможна: " + data);}
 	private static void showLoadStreamErr(Object data) {debugOut(IOM.class, LEVEL.ERROR, "Проблема с выгрузкой потока " + data + " в файл!");}
 	
-	
+	// существует ли активное хранилище:
 	public synchronized static Boolean existProp(String propertiName) {
 		for (Properties properti : PropsArray) {
 			if (properti.get("propName").equals(propertiName.toString())) {return true;}
 		}
 		return false;
 	}
-	
+	// существует ли в хранилище такой ключ:
 	public synchronized static Boolean existKey(String propertiName, String key) {
 		for (Properties properties : PropsArray) {
 			if (properties.get("propName").equals(propertiName.toString())) {
@@ -271,37 +276,38 @@ public class IOM {
 
 		return false;
 	}
-	
+	// получить индекс хранилища с таким именем:
 	public synchronized static int getPropIndex(String propertiName) {
 		for (Properties properti : PropsArray) {
 			if (properti.get("propName").equals(propertiName)) {return PropsArray.indexOf(properti);}
 		}
 		return -1;
 	}
-	
-	
-	public synchronized static String headersList() {
+	// получить список имен активных хранилищ:
+	public synchronized static String getPropsNames() {
 		ArrayList<String> propsNames = new ArrayList<String>(PropsArray.size());
 		for (Properties properties : PropsArray) {propsNames.add(properties.getProperty("propName"));}
 		return Arrays.toString(propsNames.toArray());
 	}
-
-	private static Boolean testFileExist(File file) {
-		File parentDir = file.getParentFile();
-		while (!parentDir.exists()) {
+	
+	// проверка директорий и файлов хранилищ:
+	private static boolean testFileExist(File file) {
+		Path parentDir = Paths.get(file.getParentFile().toURI());
+		while (Files.notExists(parentDir)) {
 			debugOut(IOM.class, LEVEL.ACCENT, "Попытка создания директории '" + parentDir + "'...");
 			
-			try {parentDir.mkdirs();
-			} catch (Exception e0) {
-				e0.printStackTrace();
+			try {Files.createDirectory(parentDir);
+			} catch (IOException i0) {
+				i0.printStackTrace();
 				return false;
 			}
 		}
 		
-		while (!file.exists()) {
+		Path self = Paths.get(file.toURI());
+		while (Files.notExists(self)) {
 			debugOut(IOM.class, LEVEL.ACCENT, "Попытка создания файла '" + file + "'...");
 			
-			try {file.createNewFile();
+			try {Files.createFile(self);
 			} catch (IOException e1) {
 				e1.printStackTrace();
 				return false;
@@ -313,10 +319,12 @@ public class IOM {
 	
 	public static void setDefaultEmptyString(String des) {DEFAULT_EMPTY_STRING = des;}
 	
+	// выводить ли события в лог:
 	public static Boolean isConsoleOutOn() {return consoleOut;}
 	public static void setConsoleOutOn(Boolean onOff) {consoleOut = onOff;}
 	
-	private static void debugOut(Class<?> address, LEVEL lvl, String message) {
-		if (consoleOut) {Out.Print(address, lvl, message);}
+	// вывод событий в лог:
+	private static void debugOut(Class<?> c, LEVEL lvl, String message) {
+		if (consoleOut) {Out.Print(c, lvl, message);}
 	}
 }

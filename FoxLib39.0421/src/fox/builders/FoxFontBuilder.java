@@ -22,28 +22,27 @@ public class FoxFontBuilder {
 		SEGOE_SCRIPT, CAMBRIA, CONSTANTIA, CONSOLAS, PAPYRYS, LEELAWADEE, SEGOE_UI_SYMBOL, TIMES_NEW_ROMAN}
 	private static FONT defaultFont = FONT.ARIAL_NARROW;
 	
-	private static List<String> fArr = new LinkedList<String>();
-	private static File fontsDirectory;
+	private static List<String> fArr = new LinkedList<String>(); // набор шрифтов по-умолчанию.
+	private static File fontsDirectory; // папка с дополнительными шрифтами TRUETYPE
 		
 
 	public FoxFontBuilder(File fontsDir) {
 		if (fontsDir != null) {fontsDirectory = fontsDir;}
-		
+		// шрифты, доступные по-умолчанию:
 		fArr.add(0, "Comic Sans MS");			fArr.add(1, "Monotype Corsiva");
-		fArr.add(2, "bahnschrift");				fArr.add(3, "Candara");
-		fArr.add(4, "Harlow Solid Italic");	fArr.add(5, "Corbel");
+		fArr.add(2, "bahnschrift");					fArr.add(3, "Candara");
+		fArr.add(4, "Harlow Solid Italic");		fArr.add(5, "Corbel");
 		fArr.add(6, "Georgia");						fArr.add(7, "Arial");
 		fArr.add(8, "Arial Narrow");				fArr.add(9, "Segoe Script");
-		fArr.add(10, "Cambria");					fArr.add(11, "Constantia");
+		fArr.add(10, "Cambria");						fArr.add(11, "Constantia");
 		fArr.add(12, "Consolas");					fArr.add(13, "Papyrus");
-		fArr.add(14, "Leelawadee UI");		fArr.add(15, "Segoe UI Symbol");
+		fArr.add(14, "Leelawadee UI");			fArr.add(15, "Segoe UI Symbol");
 		fArr.add(16, "Times New Roman");
 	}
 
-	public static Font setFoxFont(FONT fontName, float fontSize) {return setFoxFont(fontName.ordinal(), Math.round(fontSize), false);}
-	
-	public static Font setFoxFont(FONT fontName, float fontSize, Boolean isBold) {return setFoxFont(fontName.ordinal(), Math.round(fontSize), isBold);}
-	
+	// выбор шрифта:
+	public static Font setFoxFont(FONT fontName, float fontSize) {return setFoxFont(fontName.ordinal(), Math.round(fontSize), false);}	
+	public static Font setFoxFont(FONT fontName, float fontSize, Boolean isBold) {return setFoxFont(fontName.ordinal(), Math.round(fontSize), isBold);}	
 	public static Font setFoxFont(int ID, int fontSize, Boolean isBold) {
 		if (fArr.size() == 0) {new FoxFontBuilder(null);}
 		
@@ -51,32 +50,25 @@ public class FoxFontBuilder {
 			errMessage(ID);
 			return new Font(fArr.get(defaultFont.ordinal()), isBold ? Font.BOLD : Font.PLAIN, fontSize);
 		}
-
-		Boolean fontExist = false;
-	    for (String fname : GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()) {
-	        if (fname.equalsIgnoreCase(fArr.get(ID))) {
-	        	fontExist = true;
-	        	break;
-	        }
-	    }
-	    
-	    System.out.println("\n");
 		
-	    if (!fontExist) {
-	    	Out.Print(FoxFontBuilder.class, LEVEL.ERROR, "Font '" + fArr.get(ID) + "' not exists in this OS! Please setup it if you can.");
+	    if (!isFontExist(ID)) {
 	    	if (fontsDirectory == null) {return new Font(fArr.get(defaultFont.ordinal()), isBold ? Font.BOLD : Font.PLAIN, fontSize);} // если шрифт не зарегистрирован и не указана дирректория с требуемым - возвращаем шрифт по-умолчанию.
 	    	
+	    	// если в ОС нет шрифта, но указана папка с необходимыми шрифтами:
 	    	try {
-	    		Out.Print(FoxFontBuilder.class, LEVEL.ACCENT, "Now will be setup income fonts pack...");
-//	    		InputStream stream = ClassLoader.getSystemClassLoader().getResourceAsStream("roboto-bold.ttf");
-//	    		Font font = Font.createFont(Font.TRUETYPE_FONT, stream).deriveFont(48f);
-//	    		Font font = Font.createFont(Font.TRUETYPE_FONT, new File("Fonts\\custom_font.ttf")).deriveFont(12f);
-	    		File[] fontsDir = fontsDirectory.listFiles();
-	    		for (File fontDir : fontsDir) {
+	    		Out.Print(FoxFontBuilder.class, LEVEL.ACCENT, "Now will be setup fonts...");
+	    		for (File fontDir : fontsDirectory.listFiles()) {
 					File[] fonts = fontDir.listFiles();
 					for (File font : fonts) {
-						try {GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(Font.createFont(Font.TRUETYPE_FONT, font));
-						} catch (Exception e) {Out.Print(FoxFontBuilder.class, LEVEL.ERROR, "Не удалось подключить шрифт " + font.getName() + " как TRUETYPE." + e.getMessage());}
+						try {
+							GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(Font.createFont(Font.TRUETYPE_FONT, font));
+//				    		InputStream stream = ClassLoader.getSystemClassLoader().getResourceAsStream("roboto-bold.ttf");
+//				    		Font font = Font.createFont(Font.TRUETYPE_FONT, stream).deriveFont(48f);
+//				    		Font font = Font.createFont(Font.TRUETYPE_FONT, new File("Fonts\\custom_font.ttf")).deriveFont(12f);
+						} catch (Exception e) {
+							Out.Print(FoxFontBuilder.class, LEVEL.ERROR, "Не удалось подключить шрифт " + font.getName() + " как TRUETYPE." + e.getMessage());
+							continue;
+						}
 					}
 				}
 	    	} catch (Exception e) {
@@ -85,14 +77,24 @@ public class FoxFontBuilder {
 	    		if (!fontsDirectory.exists()) {Out.Print(FoxFontBuilder.class, LEVEL.ERROR, "FAILED!");	    			
 	    		} else {Out.Print(FoxFontBuilder.class, LEVEL.INFO, "Success!");}
 	    	}
-
-    		return new Font(fArr.get(defaultFont.ordinal()), isBold ? Font.BOLD : Font.PLAIN, fontSize);	    	
+	    	
+	    	// если не получилось, возвращаем шрифт по-умолчанию:
+	    	if (!isFontExist(ID)) {return new Font(fArr.get(defaultFont.ordinal()), isBold ? Font.BOLD : Font.PLAIN, fontSize);}	    	
 	    }
 	    
 		return new Font(fArr.get(ID), isBold ? Font.BOLD : Font.PLAIN, fontSize);
 	}
 
 	
+	private static boolean isFontExist(int ID) {
+	    for (String fname : GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()) {
+	        if (fname.equalsIgnoreCase(fArr.get(ID))) {return true;}
+	    }
+	    
+	    Out.Print(FoxFontBuilder.class, LEVEL.WARN, "Font '" + fArr.get(ID) + "' not exists in this OS! Please setup it if you can.");
+		return false;
+	}
+
 	public static int getStringHeight(Graphics gr) {return gr.getFontMetrics().getHeight();}
 	public static Double getStringWidth(Graphics gr, String string) {return getStringBounds(gr, string).getWidth();}
 	
@@ -129,8 +131,9 @@ public class FoxFontBuilder {
 	
 	private static void errMessage(int ID) {
 		JOptionPane.showMessageDialog(null,
-				"В методе FontBuilder.getFontID нет шрифта с ID " + ID
-						+ "! Воспользуйтесь методами для получения количества\nдоступных или добавления своего, нового шрифта.",
+				"<html>В FoxFontBuilder нет шрифта с ID " + ID + ".<br>"
+				+ "Воспользуйтесь методами для получения количества доступных<br>"
+				+ "или методами добавления своего шрифта.",
 				"Ошибка!", JOptionPane.WARNING_MESSAGE);
 	}
 	

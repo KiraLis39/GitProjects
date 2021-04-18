@@ -20,7 +20,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.KeyStroke;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.border.EmptyBorder;
 
@@ -50,28 +49,23 @@ public class FoxConsole extends JDialog implements KeyListener {
 	
 	public FoxConsole(JFrame parent, String consoleTitle, Boolean isModal, KeyListener kList) {
 		super(parent, consoleTitle, isModal);
-//		try {UIManager.setLookAndFeel(new NimbusLookAndFeel());
-//	    } catch (Exception e) {System.err.println("Couldn't get specified look and feel, for some reason.");}
-
-		this.parentFrame = parent;
-		
+		this.parentFrame = parent;		
 		if (kList != null) {this.kList = kList;} else {this.kList = this;}
 		
 		setLayout(new BorderLayout());
 		setModalExclusionType(Dialog.ModalExclusionType.NO_EXCLUDE);
 		setUndecorated(true);
 		setVisible(false);
-		
-		JComponent testFrameComponent = (JComponent) this.parentFrame.getContentPane();
-		testFrameComponent.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_QUOTE, 0), "onoff");
-		testFrameComponent.getActionMap().put("onoff", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				System.out.println(">> " + e.getID() + " - " + e.getModifiers());
-				visibleChanger();
-			}
-		});
 
+		InputAction.add("console", this);
+		InputAction.add("parent", (JComponent) this.parentFrame.getContentPane());
+		InputAction.set("console", "onoff", KeyEvent.VK_BACK_QUOTE, 0, new AbstractAction() {
+			@Override	public void actionPerformed(ActionEvent e) {visibleChanger();}
+		});
+		InputAction.set("parent", "onoff", KeyEvent.VK_BACK_QUOTE, 0, new AbstractAction() {
+			@Override	public void actionPerformed(ActionEvent e) {visibleChanger();}
+		});
+		
 		createNewConsole();
 	}
 

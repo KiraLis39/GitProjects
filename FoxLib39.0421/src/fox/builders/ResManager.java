@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -22,36 +23,34 @@ import javax.imageio.ImageIO;
 
 import adds.Out;
 import adds.Out.LEVEL;
+import tools.SystemInfo;
 
 
 public class ResManager {
-	private static Map<String, File> resourseLinksMap = Collections.synchronizedMap(new LinkedHashMap<String, File> ());
-	//and:
-	private static Map<String, byte[]> cash = Collections.synchronizedMap(new LinkedHashMap<String, byte[]> ());
-	//or:
 	private static Map<String, BufferedImage> imageBuffer = Collections.synchronizedMap(new LinkedHashMap<String, BufferedImage> ());
+	private static Map<String, File> resourseLinksMap = Collections.synchronizedMap(new LinkedHashMap<String, File> ());
+	private static Map<String, byte[]> cash = Collections.synchronizedMap(new LinkedHashMap<String, byte[]> ());
 	
-	private static int HQ = 0, MIN_ELEMENTS_CASH_COUNT_TO_CLEARING = 100;
-	private final static long MAX_MEMORY = Runtime.getRuntime().maxMemory() - 1;
+	private static int HQ = 0, MIN_ELEMENTS_CASH_COUNT_TO_CLEARING = 128, MIN_ELEMENTS_BIMAGE_COUNT_TO_CLEARING = 64;
+	private final static long MAX_MEMORY = SystemInfo.MEMORY.getMaxJvmMemory() - 1L;
 	private static long USED_MEMORY, MAX_LOADING;
 	
-	private static float memGCTrigger = 0.85f;
+	private static float memGCTrigger = 0.75f;
 	private static Boolean logEnable = true;
 	
-	
-	// may be overrides:
+	// опасно заливать память тоннами мусора. Не бойся, мемориКонтроль спасёт тебя =^_^=:
 	public static void memoryControl() {
-		USED_MEMORY = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+		USED_MEMORY = (SystemInfo.MEMORY.getTotalJvmMemory() - SystemInfo.MEMORY.getFreeJvmMemory());
 		MAX_LOADING = (long) (MAX_MEMORY * memGCTrigger);
 		
-		if (USED_MEMORY >= MAX_LOADING) {
-			log("ResourceManager: Memory control activation! (USED " + (USED_MEMORY / 1048576L) + " > " + ((int) (memGCTrigger * 100)) + "% from MAX " + (MAX_MEMORY / 1048576L) + ")\nClearing...");
+		if (USED_MEMORY > MAX_LOADING) {
+			log("ResourceManager: Memory control (USED " + (USED_MEMORY / 1048576L) + " > " + ((int) (memGCTrigger * 100)) + "% from MAX " + (MAX_MEMORY / 1048576L) + ")\nClearing...");
 			
 			try {
 				int clearedCount = 0;
 				if (cash.size() > MIN_ELEMENTS_CASH_COUNT_TO_CLEARING) {
 					for (Entry<String, byte[]> entry : cash.entrySet()) {
-						if (entry.getValue().length > MAX_LOADING / 10) {
+						if (entry.getValue().length > MAX_LOADING * 0.05f) { // если кэшированная штука занимает больше 5% разрешенной памяти.
 							cash.remove(entry.getKey());
 							clearedCount++;
 						}
@@ -60,26 +59,40 @@ public class ResManager {
 					log(LEVEL.ACCENT, "clearCash: was removed " + clearedCount + " elements from cash.");
 				} else {
 					log(LEVEL.ACCENT, "clearCash: cash has only " + cash.size() + "elements (MIN_ELEMENTS = " + MIN_ELEMENTS_CASH_COUNT_TO_CLEARING + "), than been full-cleared.");
-					cash.clear();
+					cash.clear(); // если навыбирать ничего не вышло - освобождать что-то же нужно..
+				}
+				
+				clearedCount = 0;
+				if (imageBuffer.size() > MIN_ELEMENTS_BIMAGE_COUNT_TO_CLEARING) {
+					for (Entry<String, BufferedImage> entry : imageBuffer.entrySet()) {
+						if (entry.getValue().getData().getDataBuffer().getSize() * 4L > MAX_LOADING * 0.1f) { // если кэшированная картинка занимает больше 10% разрешенной памяти.
+							imageBuffer.remove(entry.getKey());
+							clearedCount++;
+						}
+					}
+					
+					log(LEVEL.ACCENT, "clearBImage: was removed " + clearedCount + " pictures from buffer.");
+				} else {
+					log(LEVEL.ACCENT, "clearBImage: cash has only " + imageBuffer.size() + "elements (MIN_ELEMENTS = " + MIN_ELEMENTS_BIMAGE_COUNT_TO_CLEARING + "), than been full-cleared.");
+					imageBuffer.clear(); // если навыбирать ничего не вышло - освобождать что-то же нужно..
 				}
 			} catch (Exception e) {
-				log(LEVEL.ERROR, "Was catched memory overlap! Hooray! usingLong > " + (USED_MEMORY / 1048576L) + " / " + (MAX_MEMORY / 1048576L) + " >> " + e.getLocalizedMessage());
+				log(LEVEL.ERROR, "Was catched overlap! Hooray! using > " + (USED_MEMORY / 1048576L) + " / " + (MAX_MEMORY / 1048576L) + " >> " + e.getMessage());
 				e.printStackTrace();
 			}
 		}
 	}
 
-	
-	public synchronized static void add(Object index, File file) throws Exception {add(index, file, false);}
-	
-	public synchronized static void add(Object index, BufferedImage bImage) throws Exception {add(index, bImage, false);}
-	
-	public synchronized static void add(Object index, URL fileURL) throws Exception {add(index, fileURL, false);}
-	
-	public synchronized static void add(Object index, URL fileURL, Boolean isImage) throws Exception {add(index, new File(fileURL.getFile()), isImage);}
-		
+	// заливаем новый ресурс:
+	public synchronized static void add(Object index, File file) throws Exception {add(index, file, false);}	
+	public synchronized static void add(Object index, BufferedImage bImage) throws Exception {add(index, bImage, false);}	
+	public synchronized static void add(Object index, URL fileURL) throws Exception {add(index, fileURL, false);}	
+	public synchronized static void add(Object index, URL fileURL, Boolean isImage) throws Exception {add(index, new File(fileURL.getFile()), isImage);}		
 	public synchronized static void add(Object index, Object file, Boolean isImage) throws Exception {
-		log("Try to adding the resource '" + index + "'...");		
+		if (isImage == null) {isImage = false;}
+		if (file == null || Files.notExists(Paths.get(((File) file).toURI()))) {throw new RuntimeException("Object file cant be a NULL and should exist!");}
+		log("Try to add the resource '" + index + "'...");
+		
 		String name = String.valueOf(index);
 		if (file instanceof BufferedImage) {
 			imageBuffer.put(name, (BufferedImage) file);
@@ -92,7 +105,7 @@ public class ResManager {
 		
 		memoryControl();
 	}
-	
+	// удаляем ресурс:
 	public synchronized static void remove(Object index) {
 		String name = String.valueOf(index);
 		if (cash.containsKey(name)) {cash.remove(name);}
@@ -100,83 +113,31 @@ public class ResManager {
 		if (resourseLinksMap.containsKey(name)) {resourseLinksMap.remove(name);}
 	}
 
-	
-	public synchronized static BufferedImage getBImage(Object index) {
-		try {
-			return getBImage(
-					index, 
-					true, 
-					GraphicsEnvironment
-					.getLocalGraphicsEnvironment()
-					.getDefaultScreenDevice()
-					.getDefaultConfiguration()
-					);
-		} catch (Exception e) {
-			e.printStackTrace();
+	// забираем картинку:
+	public synchronized static BufferedImage getBImage(Object index) {return getBImage(index, true);}	
+	public synchronized static BufferedImage getBImage(Object index, boolean transparensy) {
+		return getBImage(index, transparensy, GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration());
+	}
+	public synchronized static BufferedImage getBImage(Object index, boolean transparensy, GraphicsConfiguration gconf) {
+		if (gconf == null) {gconf = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();}
+		
+		Objects.requireNonNull(index);		
+		String name = String.valueOf(index);
+		if (name.isEmpty() || name.isBlank()) {
+			log(LEVEL.WARN, "Index of image is empty?");
 			return null;
 		}
-	}
-	
-	public synchronized static BufferedImage getBImage(Object index, Boolean transparensy) {return getBImage(index, true, GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration());}
-	
-	public synchronized static BufferedImage getBImage(Object index, Boolean transparensy, GraphicsConfiguration gconf) {
-		Objects.requireNonNull(index);
-		String name = String.valueOf(index);
-		if (name.equals("")) {throw new RuntimeException("Index of image is NULL or empty!");}
+		
 		log("Getting the cashed BufferedImage of " + name);
 		
 		if (imageBuffer.containsKey(name)) {return imageBuffer.get(name);
 		} else {
 			ImageIO.setUseCache(false);
-			BufferedImage tmp;
-			
-			// OPAQUE = 1; BITMASK = 2; TRANSLUCENT = 3;
-			HQ = 3;
-			
-			if (cash.containsKey(name)) {
-				try (ByteArrayInputStream bais = new ByteArrayInputStream(cash.get(name))) {
-					BufferedImage imRb = ImageIO.read(bais);
-//					bais.close();
-					
-					tmp = gconf.createCompatibleImage(imRb.getWidth(), imRb.getHeight(), HQ);				
-					
-					if (transparensy) {
-						Graphics2D g2D = (Graphics2D) tmp.getGraphics();
-						g2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-						g2D.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);						
-						g2D.drawImage(imRb, 0, 0, null);
-						g2D.dispose();
+			HQ = 3; // OPAQUE = 1; BITMASK = 2; TRANSLUCENT = 3;
 						
-						imageBuffer.put(name, tmp);
-					} else {imageBuffer.put(name, imRb);}
-					
-					cash.remove(name);
-				} catch (IOException e) {
-					e.printStackTrace();
-					return null;
-				}
+			if (cash.containsKey(name)) {buildImageByCash(name, transparensy, gconf);
 			} else {
-				if (resourseLinksMap.containsKey(name)) {
-					try {
-						tmp = gconf.createCompatibleImage(
-								ImageIO.read(resourseLinksMap.get(name)).getWidth(), 
-								ImageIO.read(resourseLinksMap.get(name)).getHeight(),
-								HQ
-						);
-
-						if (transparensy) {
-							Graphics2D g2D = (Graphics2D) tmp.getGraphics();
-							g2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-							g2D.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-							g2D.drawImage(ImageIO.read(resourseLinksMap.get(name)), 0, 0, null);
-							g2D.dispose();
-							
-							imageBuffer.put(name, tmp);
-						} else {imageBuffer.put(name, ImageIO.read(resourseLinksMap.get(name)));}
-					} catch (IOException e) {
-						e.printStackTrace();
-						return null;
-					}
+				if (resourseLinksMap.containsKey(name)) {buildImageByLink(name, transparensy, gconf);
 				} else {
 					log(LEVEL.WARN, "BufferedImage '" + name + "' not exist into ResourceManager!");
 					return null;
@@ -187,11 +148,60 @@ public class ResManager {
 		}
 	}
 	
+	
+	private static void buildImageByLink(String name, boolean transparensy, GraphicsConfiguration gconf) {
+		try {
+			BufferedImage tmp = gconf.createCompatibleImage(
+					ImageIO.read(resourseLinksMap.get(name)).getWidth(), 
+					ImageIO.read(resourseLinksMap.get(name)).getHeight(),
+					HQ
+			);
+
+			if (transparensy) {
+				Graphics2D g2D = (Graphics2D) tmp.getGraphics();
+				g2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+				g2D.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+				g2D.drawImage(ImageIO.read(resourseLinksMap.get(name)), 0, 0, null);
+				g2D.dispose();
+				
+				imageBuffer.put(name, tmp);
+			} else {imageBuffer.put(name, ImageIO.read(resourseLinksMap.get(name)));}
+		} catch (IOException e) {
+			log(LEVEL.WARN, "Operation buildImageByLink has failed!");
+			e.printStackTrace();
+		}
+	}
+
+	private static void buildImageByCash(String name, boolean transparensy, GraphicsConfiguration gconf) {
+		try (ByteArrayInputStream bais = new ByteArrayInputStream(cash.get(name))) {
+			BufferedImage imRb = ImageIO.read(bais);
+			
+			BufferedImage tmp = gconf.createCompatibleImage(imRb.getWidth(), imRb.getHeight(), HQ);				
+			
+			if (transparensy) {
+				Graphics2D g2D = (Graphics2D) tmp.getGraphics();
+				g2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+				g2D.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);						
+				g2D.drawImage(imRb, 0, 0, null);
+				g2D.dispose();
+				
+				imageBuffer.put(name, tmp);
+			} else {imageBuffer.put(name, imRb);}
+			
+			cash.remove(name);
+		} catch (IOException e) {
+			log(LEVEL.WARN, "Operation buildImageByCash has failed!");
+			e.printStackTrace();
+		}
+	}
+
+	// получить ширину-высоту картинки до её получения отсюда:
 	public synchronized static Dimension getBImageDim(Object index) {
 		try {return new Dimension(imageBuffer.get(index.toString()).getWidth(), imageBuffer.get(index.toString()).getHeight());
 		} catch (Exception e) {return null;}
 	}
 	
+	// получить массив байтов ресурса:
 	public synchronized static byte[] getBytes(Object index) {
 		String name = String.valueOf(index);
 		if (cash.containsKey(name)) {return cash.get(name);
@@ -208,31 +218,25 @@ public class ResManager {
 		}
 	}
 	
-	public synchronized static File getFilesLink(Object index) {
+	// получить ссылку на ресурс:
+	public synchronized static File getFileLink(Object index) {
 		String name = String.valueOf(index);
 		try {return resourseLinksMap.get(name);
 		} catch (Exception e) {
-			if (resourseLinksMap.isEmpty()) {
-				log("The LinksMap was cleaned already. It was You?..");
-				e.printStackTrace();
-			} else {
-				log("The link of file '" + name + "' dont exist into LinksMap. Sorry!");
-				e.printStackTrace();
-			}
+			if (resourseLinksMap.isEmpty()) {log("The LinksMap was cleaned already. It was You?.. (" + e.getMessage() + ")");
+			} else {log("The link of file '" + name + "' dont exist into LinksMap. Sorry! (" + e.getMessage() + ")");}
 		}
 		
 		return null;
 	}
 	
 	
-	public synchronized static Set<Entry<String, File>> getEntrySet() {return resourseLinksMap.entrySet();}
-	
-	public synchronized static Set<String> getKeySet() {return resourseLinksMap.keySet();}
-	public synchronized static Collection<File> getValuesSet() {return resourseLinksMap.values();}
+	public synchronized static Set<String> getLinksKeys() {return resourseLinksMap.keySet();}
+	public synchronized static Collection<File> getLinksValues() {return resourseLinksMap.values();}
+	public synchronized static Set<Entry<String, File>> getLinksEntrySet() {return resourseLinksMap.entrySet();}	
 
 	
 	private static void log(String message) {log(LEVEL.INFO, message);}
-	
 	private static void log(LEVEL i, String message) {
 		if (logEnable) {Out.Print(ResManager.class, i, message);}
 	}
