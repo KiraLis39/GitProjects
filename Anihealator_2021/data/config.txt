@@ -1,7 +1,7 @@
 #IOM_SAVE
 #Fri Apr 23 18:31:10 MSK 2021
 propFile=.\\data\\config.txt
-isAdminAllowed=true
+isAdminAllowed=false
 frameHeight=768
 frameWidth=1024
 isRenderOn=true
