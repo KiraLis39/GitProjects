@@ -328,7 +328,7 @@ public class AniFrame extends JFrame implements ActionListener, WindowListener, 
 	
 	private void reloadMidPanel(String typeChosen) {
 		midPane.removeAll();
-//		midPane.setLayout(new BorderLayout());
+		midPane.setLayout(new BorderLayout());
 		if (onScrollPane != null) {onScrollPane.removeAll();}
 
 		resultList = new ArrayList<String>();
@@ -437,10 +437,10 @@ public class AniFrame extends JFrame implements ActionListener, WindowListener, 
 		
 		if (e.getActionCommand().startsWith("chose_")) {
 			midPane.removeAll();
-//			midPane.setLayout(new BorderLayout());
+			midPane.setLayout(new BorderLayout());
 			
 			String chosenItem = e.getActionCommand().replace("chose_", "");
-			System.out.println("Pressed the " + chosenItem);
+			Out.Print(getClass(), Out.LEVEL.DEBUG, "Pressed the " + chosenItem);
 
 			midPane.add(new ItemCard(DataBase.getElement(chosenItem)));
 			

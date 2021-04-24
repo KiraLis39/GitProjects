@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
@@ -59,12 +60,12 @@ public class ItemCard extends JPanel implements ComponentListener {
 	private JTextField weightField, resultField_1;
 	private JScrollPane tmpScroll;
 	
-	private Color itemBackColor;
+	private Color itemBackColorUp, itemBackColorDown;
 	private HTMLDocument doc;
 	
 	
 	public ItemCard(String[] itemData) {
-		Out.Print(ItemCard.class, Out.LEVEL.DEBUG, "Открытие карточки: " + itemData[2]);
+		Out.Print(ItemCard.class, Out.LEVEL.INFO, "Открытие карточки: " + itemData[2]);
 		setLayout(new BorderLayout());
 		setBackground(color0);
 		
@@ -89,7 +90,7 @@ public class ItemCard extends JPanel implements ComponentListener {
 						
 						if (photo.getWidth() > maxPicWidth) {
 							percent = maxPicWidth / photo.getWidth();
-							System.out.println("Width %" + percent);
+//							System.out.println("Width %" + percent);
 							photoW = (int) maxPicWidth;
 							photoH = (int) (photo.getHeight() * percent);
 						}
@@ -108,21 +109,33 @@ public class ItemCard extends JPanel implements ComponentListener {
 						if (Registry.isRenderOn) {g2D.addRenderingHints(AniFrame.d2DRender);}
 						
 						if (photo != null) {
-							itemBackColor = new Color(
+							itemBackColorUp = new Color(
 											photo.getColorModel().getRGB(
-													photo.getRaster().getDataElements(
-															photo.getWidth() - 3, photo.getHeight() / 2, null)));
-							g2D.setColor(itemBackColor);
+													photo.getRaster().getDataElements(3, 3, null)));
+							itemBackColorDown = new Color(
+									photo.getColorModel().getRGB(
+											photo.getRaster().getDataElements(3, photo.getHeight() - 3, null)));
+							
+							g2D.setPaint(new GradientPaint(
+									getWidth() / 2, 0, itemBackColorUp, 
+									getWidth() / 2, getHeight() + 6, itemBackColorDown));
+							
 							g2D.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
 							g2D.drawImage(photo, getWidth() - photoW - 4, 4, photoW, photoH, null);
 						}
 						
-						g2D.setFont(f3);
-						g2D.setColor(Color.DARK_GRAY);
-						g2D.drawString(itemData[2], itemNameFontSize / 6, itemNameFontSize);
+						boolean useBlueFont = (itemBackColorUp.getRed() >= 127 && itemBackColorUp.getGreen() < 127 && itemBackColorUp.getBlue() < 127);
+						boolean useLightFont = (itemBackColorUp.getRed() <= 170 && itemBackColorUp.getGreen() <= 170 && itemBackColorUp.getBlue() <= 170);
 						
-						g2D.setColor(Color.ORANGE.darker());
-						g2D.drawString(itemData[2], itemNameFontSize / 6 - 1, itemNameFontSize - 1);
+						g2D.setFont(f3);
+						g2D.setColor(useLightFont ? Color.WHITE : Color.DARK_GRAY);
+						g2D.drawString(itemData[2], 5, itemNameFontSize);
+						
+						try {
+							System.out.println("R:" + itemBackColorUp.getRed() + "; G:" + itemBackColorUp.getGreen() + "; B:" + itemBackColorUp.getBlue());
+							g2D.setColor(useBlueFont ? Color.BLUE.darker() : (useLightFont ? Color.ORANGE : Color.ORANGE.darker()));
+						} catch (Exception e) {g2D.setColor(Color.ORANGE.darker());}
+						g2D.drawString(itemData[2], 6, itemNameFontSize - 1);
 						
 						g2D.dispose();
 					}
@@ -327,10 +340,10 @@ public class ItemCard extends JPanel implements ComponentListener {
 //		tmpScroll.setSize(new Dimension(tmpScroll.getWidth(), descriptionArea.getHeight()));
 //		tmpScroll.revalidate();
 		
-		System.out.println("\nSize ItemCard: " + getWidth() + "x" + getHeight());
-		System.out.println("Size descriptionArea: " + descriptionArea.getWidth() + "x" + descriptionArea.getHeight());
-		System.out.println("Size textPane: " + textPane.getWidth() + "x" + textPane.getHeight());
-		System.out.println("Size tmpScroll: " + tmpScroll.getWidth() + "x" + tmpScroll.getHeight());
+		Out.Print(getClass(), Out.LEVEL.DEBUG, "\ncomponentResized(): Size ItemCard: " + getWidth() + "x" + getHeight());
+		Out.Print(getClass(), Out.LEVEL.DEBUG, "Size descriptionArea: " + descriptionArea.getWidth() + "x" + descriptionArea.getHeight());
+		Out.Print(getClass(), Out.LEVEL.DEBUG, "Size textPane: " + textPane.getWidth() + "x" + textPane.getHeight());
+		Out.Print(getClass(), Out.LEVEL.DEBUG, "Size tmpScroll: " + tmpScroll.getWidth() + "x" + tmpScroll.getHeight() + "\n");
 	}
 
 	public void componentMoved(ComponentEvent e) {}
