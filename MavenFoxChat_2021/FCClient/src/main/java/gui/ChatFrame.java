@@ -546,8 +546,8 @@ public class ChatFrame extends JFrame implements ActionListener, MouseListener, 
 					if (needUpdate) {
 						needUpdate = false;
 						if (isBusy) {
-							t1.interrupt();
-							t2.interrupt();
+							try {t1.interrupt();} catch (Exception e) {}
+							try {t2.interrupt();} catch (Exception e) {}
 						}
 						isBusy = true;
 						
