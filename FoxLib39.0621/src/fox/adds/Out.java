@@ -118,7 +118,7 @@ public class Out {
 	private static void logsCleaner() {
 		File[] logsCount = HTMLdir.listFiles();
 		if (logsCount.length >= logsCountAllow) {
-			for (int i = 0; i < logsCount.length - logsCountAllow; i++) {logsCount[i].delete();}
+			for (int i = 0; i < logsCount.length - (logsCountAllow - 1); i++) {logsCount[i].delete();}
 		}
 		logsCount = null;
 	}
@@ -199,9 +199,6 @@ public class Out {
 				case DEBUG: 
 				default:				resultString = "[DEBUG]\t" + address + ": " + message;
 			}
-
-			if (level == LEVEL.ERROR || level == LEVEL.WARN) {System.err.println(resultString);				
-			} else {System.out.println(resultString);}
 			
 			if (connectedFoxConsole != null) {connectedFoxConsole.appendToConsole(resultString);}
 			
@@ -214,6 +211,9 @@ public class Out {
 			if (level.ordinal() >= errLevel.ordinal()) {
 				typeDeque.addFirst(level);
 				messageStack.insertElementAt(address + ": " + message, 0);
+				
+				if (level == LEVEL.ERROR || level == LEVEL.WARN) {System.err.println(resultString);				
+				} else {System.out.println(resultString);}
 			}
 		}
 	}
