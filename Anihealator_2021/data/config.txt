@@ -1,0 +1,9 @@
+#IOM_SAVE
+#Sat Apr 24 17:45:30 MSK 2021
+propFile=.\\data\\config.txt
+isAdminAllowed=true
+frameHeight=768
+frameWidth=1024
+isRenderOn=true
+isResizeAllow=true
+propName=CONFIG
