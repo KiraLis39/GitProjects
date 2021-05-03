@@ -10,7 +10,8 @@ import java.util.Arrays;
 
 import javax.swing.JOptionPane;
 
-import adds.Out;
+import fox.Out;
+import fox.Out.LEVEL;
 import registry.Registry;
 
 
@@ -37,7 +38,7 @@ public class DataBase {
 		
 	    Class.forName("org.sqlite.JDBC");
 	    conn = DriverManager.getConnection("jdbc:sqlite:data\\db.db");	   
-	    Out.Print(DataBase.class, Out.LEVEL.DEBUG, "База 'db.db' Подключена!");
+	    Out.Print(DataBase.class, LEVEL.DEBUG, "База 'db.db' Подключена!");
 	}
 	
 	// --------Создание таблицы--------
@@ -70,7 +71,7 @@ public class DataBase {
 					+ ");");
 			
 	//		PRAGMA foreign_keys = 1;
-			Out.Print(DataBase.class, Out.LEVEL.DEBUG, "Таблицы 'type' или 'aids' созданы или уже существуют.");
+			Out.Print(DataBase.class, LEVEL.DEBUG, "Таблицы 'type' или 'aids' созданы или уже существуют.");
 		} catch (SQLException e) {e.printStackTrace();}
 
 		getElementsData();
@@ -109,8 +110,8 @@ public class DataBase {
 				   + newData[10] + "', '" + newData[11] + "', '" + newData[12] + "', '" 
 				   + newData[3] + "'); ");
 			} catch (SQLException e) {
-				Out.Print(DataBase.class, Out.LEVEL.ACCENT, "Не удалось создать элемент. Возможно, он уже есть.");
-				Out.Print(DataBase.class, Out.LEVEL.ACCENT, "Попытка обновить запись id #" + newData[5]);
+				Out.Print(DataBase.class, LEVEL.ACCENT, "Не удалось создать элемент. Возможно, он уже есть.");
+				Out.Print(DataBase.class, LEVEL.ACCENT, "Попытка обновить запись id #" + newData[5]);
 				
 				Statement updStatmt = conn.createStatement();				
 				updStatmt.execute("UPDATE aids SET "
@@ -152,7 +153,7 @@ public class DataBase {
 	public void CloseDB() throws ClassNotFoundException, SQLException {
 		conn.close();
 		
-		Out.Print(DataBase.class, Out.LEVEL.ACCENT, "Соединение c DB завершено.");
+		Out.Print(DataBase.class, LEVEL.ACCENT, "Соединение c DB завершено.");
 	}
 
 	
@@ -179,7 +180,7 @@ public class DataBase {
 			while(resSet.next())	{result.add(resSet.getString("name"));}
 		} catch (SQLException e) {e.printStackTrace();}
 		
-		Out.Print(DataBase.class, Out.LEVEL.DEBUG, "getElementsOfType() result: " + Arrays.asList(result));
+		Out.Print(DataBase.class, LEVEL.DEBUG, "getElementsOfType() result: " + Arrays.asList(result));
 		return result;
 	}
 	
@@ -193,7 +194,7 @@ public class DataBase {
 			while(resSet.next())	{result.add(resSet.getString("name"));}
 		} catch (SQLException e) {e.printStackTrace();}
 		
-		Out.Print(DataBase.class, Out.LEVEL.DEBUG, "getAidsList() result: " + Arrays.asList(result));
+		Out.Print(DataBase.class, LEVEL.DEBUG, "getAidsList() result: " + Arrays.asList(result));
 		return result;
 	}
 	
@@ -250,11 +251,11 @@ public class DataBase {
 				}
 			} catch (SQLException e) {
 				e.printStackTrace();
-				Out.Print(DataBase.class, Out.LEVEL.ERROR, "Error: " + e.getMessage());
+				Out.Print(DataBase.class, LEVEL.ERROR, "Error: " + e.getMessage());
 			}			
 		} catch (SQLException e) {
 			e.printStackTrace();
-			Out.Print(DataBase.class, Out.LEVEL.ERROR, "Error: " + e.getMessage());
+			Out.Print(DataBase.class, LEVEL.ERROR, "Error: " + e.getMessage());
 		}
 
 		return allData;

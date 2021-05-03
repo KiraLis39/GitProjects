@@ -1,4 +1,4 @@
-package fox;
+package render;
 
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;

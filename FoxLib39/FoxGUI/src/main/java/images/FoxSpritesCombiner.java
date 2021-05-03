@@ -1,13 +1,10 @@
-package graphics;
+package images;
 
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import fox.Out;
-import fox.Out.LEVEL;
 
 
 public class FoxSpritesCombiner {
@@ -24,7 +21,7 @@ public class FoxSpritesCombiner {
 			if (!sptitesMap.containsKey(spriteListName)) {
 				try{sptitesMap.put(spriteListName, result = loadAndCut(image, wCount, hCount));} catch (Exception e) {e.printStackTrace();}
 			} else {
-				Out.Print(FoxSpritesCombiner.class, LEVEL.WARN, "The key '" + spriteListName + "' exist into map already.", Thread.currentThread());
+				log("The key '" + spriteListName + "' exist into map already.");
 				return getSprites(spriteListName);
 			}
 		}
@@ -80,7 +77,7 @@ public class FoxSpritesCombiner {
 	public static void removeSprite(String spriteName) {
 		if (sptitesMap == null) {throw new RuntimeException("FoxSpritesCombiner: removeSprite(): This map is NULL. Would You create one?");}
 		if (sptitesMap.get(spriteName) == null) {
-			Out.Print("fox.games.FoxSpritesCombiner: removeSprite(): Sprite " + spriteName + " is not exist here.");
+			log("removeSprite(): Sprite " + spriteName + " is not exist here.");
 			return;
 		}
 		
@@ -93,5 +90,9 @@ public class FoxSpritesCombiner {
 		g2D.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
 		g2D.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 		g2D.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_DEFAULT);
+	}
+	
+	private static void log(String message) {
+		System.out.println(FoxSpritesCombiner.class.getName() + " : " + message);
 	}
 }

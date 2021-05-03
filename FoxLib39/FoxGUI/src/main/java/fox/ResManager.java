@@ -19,6 +19,8 @@ import java.util.Objects;
 import java.util.Set;
 import javax.imageio.ImageIO;
 
+import render.FoxRender;
+
 
 public class ResManager {
 	private static Map<String, BufferedImage> imageBuffer = Collections.synchronizedMap(new LinkedHashMap<String, BufferedImage> ());

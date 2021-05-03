@@ -32,9 +32,11 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLEditorKit;
 
-import addings.ConstrainedViewPortLayout;
-import adds.Out;
-import builders.FoxFontBuilder;
+import components.ConstrainedViewPortLayout;
+import fox.FoxFontBuilder;
+import fox.FoxFontBuilder.FONT;
+import fox.Out;
+import fox.Out.LEVEL;
 import gui.AniFrame;
 import registry.Registry;
 
@@ -45,8 +47,8 @@ public class ItemCard extends JPanel implements ComponentListener {
 	private Double[] mods;
 	private int photoW = 0, photoH = 0, itemNameFontSize = 28;
 	
-	private Font f0 = FoxFontBuilder.setFoxFont(FoxFontBuilder.FONT.CANDARA, 18, false);
-	private Font f3 = FoxFontBuilder.setFoxFont(FoxFontBuilder.FONT.TIMES_NEW_ROMAN, itemNameFontSize, true);
+	private Font f0 = FoxFontBuilder.setFoxFont(FONT.CANDARA, 18, false);
+	private Font f3 = FoxFontBuilder.setFoxFont(FONT.TIMES_NEW_ROMAN, itemNameFontSize, true);
 	
 	private Color color0 = new Color(0.95f, 1.0f, 1.0f);
 	private Color color1 = new Color(0.4f, 0.6f, 0.7f);
@@ -65,16 +67,16 @@ public class ItemCard extends JPanel implements ComponentListener {
 	
 	
 	public ItemCard(String[] itemData) {
-		Out.Print(ItemCard.class, Out.LEVEL.INFO, "Открытие карточки: " + itemData[2]);
+		Out.Print(ItemCard.class, LEVEL.INFO, "Открытие карточки: " + itemData[2]);
 		setLayout(new BorderLayout());
 		setBackground(color0);
 		
 		prepareModData(itemData);
 		
 		File photoFile = new File("./data/photo/" + itemData[1] + "/" + itemData[4]);
-		Out.Print(ItemCard.class, Out.LEVEL.DEBUG, "Try to read the photo from: " + photoFile);
+		Out.Print(ItemCard.class, LEVEL.DEBUG, "Try to read the photo from: " + photoFile);
 		try {photo = ImageIO.read(photoFile);
-		} catch (Exception e2) {Out.Print(ItemCard.class, Out.LEVEL.WARN, "Фото " + photoFile + " не найдено или не указано!");}
+		} catch (Exception e2) {Out.Print(ItemCard.class, LEVEL.WARN, "Фото " + photoFile + " не найдено или не указано!");}
 		
 		textPane = new JPanel(new BorderLayout(9, 6)) {
 			{
@@ -101,6 +103,8 @@ public class ItemCard extends JPanel implements ComponentListener {
 				setBackground(color0);
 
 				photoPane = new JPanel(new BorderLayout()) {
+					Boolean useBlueFont, useLightFont;
+					
 					@Override
 					public void paintComponent(Graphics g) {
 						super.paintComponent(g);
@@ -122,18 +126,19 @@ public class ItemCard extends JPanel implements ComponentListener {
 							
 							g2D.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
 							g2D.drawImage(photo, getWidth() - photoW - 4, 4, photoW, photoH, null);
+							
+							useBlueFont = (itemBackColorUp.getRed() >= 127 && itemBackColorUp.getGreen() < 127 && itemBackColorUp.getBlue() < 127);
+							useLightFont = (itemBackColorUp.getRed() <= 170 && itemBackColorUp.getGreen() <= 170 && itemBackColorUp.getBlue() <= 170);
 						}
 						
-						boolean useBlueFont = (itemBackColorUp.getRed() >= 127 && itemBackColorUp.getGreen() < 127 && itemBackColorUp.getBlue() < 127);
-						boolean useLightFont = (itemBackColorUp.getRed() <= 170 && itemBackColorUp.getGreen() <= 170 && itemBackColorUp.getBlue() <= 170);
 						
 						g2D.setFont(f3);
-						g2D.setColor(useLightFont ? Color.WHITE : Color.DARK_GRAY);
+						g2D.setColor(useLightFont == null ? Color.DARK_GRAY : (useLightFont ? Color.WHITE : Color.DARK_GRAY));
 						g2D.drawString(itemData[2], 5, itemNameFontSize);
 						
 						try {
 							System.out.println("R:" + itemBackColorUp.getRed() + "; G:" + itemBackColorUp.getGreen() + "; B:" + itemBackColorUp.getBlue());
-							g2D.setColor(useBlueFont ? Color.BLUE.darker() : (useLightFont ? Color.ORANGE : Color.ORANGE.darker()));
+							g2D.setColor(useBlueFont == null ? Color.ORANGE.darker() : (useBlueFont ? Color.BLUE.darker() : (useLightFont ? Color.ORANGE : Color.ORANGE.darker())));
 						} catch (Exception e) {g2D.setColor(Color.ORANGE.darker());}
 						g2D.drawString(itemData[2], 6, itemNameFontSize - 1);
 						
@@ -150,7 +155,6 @@ public class ItemCard extends JPanel implements ComponentListener {
 						setEditable(false);
 						setBackground(color0);
 						setContentType("text/html");
-//						setBorder(new EmptyBorder(0, 30, 0, 0));
 					}
 				};
 				
@@ -159,8 +163,6 @@ public class ItemCard extends JPanel implements ComponentListener {
 						setBackground(color0);
 						setBorder(BorderFactory.createCompoundBorder(
 								BorderFactory.createLineBorder(color1, 1, true), new EmptyBorder(0, 3, 3, 3)));
-//						setHorizontalScrollBarPolicy(HORIZONTAL_SCROLLBAR_AS_NEEDED);
-//						setVerticalScrollBarPolicy(VERTICAL_SCROLLBAR_AS_NEEDED);
 						getViewport().setBackground(color0);
 						getViewport().setLayout(new ConstrainedViewPortLayout());
 						getVerticalScrollBar().setUnitIncrement(21);

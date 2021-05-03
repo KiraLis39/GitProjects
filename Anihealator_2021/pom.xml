@@ -4,7 +4,7 @@
 
   <groupId>anihealator</groupId>
   <artifactId>Anihealator_2021</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.2.4.6</version>
   <packaging>jar</packaging>
 
   <name>Anihealator_2021</name>

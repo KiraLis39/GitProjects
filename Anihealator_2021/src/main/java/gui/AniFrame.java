@@ -38,14 +38,15 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 
-import adds.InputAction;
-import adds.Out;
-import builders.FoxFontBuilder;
 import components.VerticalFlowLayout;
 import door.MainClass;
 import engine.DataBase;
 import engine.NewDataItem;
-import games.FoxSpritesCombiner;
+import fox.FoxFontBuilder;
+import fox.InputAction;
+import fox.Out;
+import fox.Out.LEVEL;
+import images.FoxSpritesCombiner;
 import registry.Registry;
 import subGUI.ItemCard;
 
@@ -218,11 +219,11 @@ public class AniFrame extends JFrame implements ActionListener, WindowListener, 
 		Registry.db.load();
 		
 		if (MainClass.disclaimerThread.isAlive()) {
-			Out.Print(AniFrame.class, Out.LEVEL.DEBUG, "Загрузка завершена! Ожидание закрытия дисклеймера пользователем...");
+			Out.Print(AniFrame.class, LEVEL.DEBUG, "Загрузка завершена! Ожидание закрытия дисклеймера пользователем...");
 			try {MainClass.disclaimerThread.join();
 		} catch (InterruptedException e1) {}}
 		
-		Out.Print(AniFrame.class, Out.LEVEL.INFO, "Программа запущена и готова к работе.");
+		Out.Print(AniFrame.class, LEVEL.INFO, "Программа запущена и готова к работе.");
 		setLocationRelativeTo(null);
 		setVisible(true);
 		

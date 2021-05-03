@@ -7,8 +7,8 @@ import javax.swing.JOptionPane;
 import javax.swing.UIManager;
 import javax.swing.plaf.nimbus.NimbusLookAndFeel;
 
-import adds.IOM;
-import adds.Out;
+import fox.IOM;
+import fox.Out;
 import gui.AniFrame;
 import registry.Registry;
 

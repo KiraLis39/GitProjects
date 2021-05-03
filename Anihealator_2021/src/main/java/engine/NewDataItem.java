@@ -7,17 +7,14 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.GridLayout;
-import java.awt.MouseInfo;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -39,13 +36,11 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
-import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 
-import adds.Out;
-import builders.FoxFontBuilder;
+import fox.FoxFontBuilder;
+import fox.Out;
+import fox.Out.LEVEL;
 import registry.Registry;
 
 
@@ -214,7 +209,7 @@ public class NewDataItem extends JDialog {
 																							+ "обработки информации и веса базы данных.",
 																					"Внимание!", JOptionPane.OK_OPTION, JOptionPane.INFORMATION_MESSAGE);
 																		}
-																	} catch (IOException e1) {
+																	} catch (Exception e1) {
 																		photo = null;
 																		picturesNameField.setText("");
 																	}
@@ -269,8 +264,8 @@ public class NewDataItem extends JDialog {
 
 						descriptionArea = new JTextPane() {
 							{
-//										setLineWrap(true);
-//										setWrapStyleWord(true);
+//								setLineWrap(true);
+//								setWrapStyleWord(true);
 								setFont(f1);
 								setContentType("text/html");
 							}
@@ -548,7 +543,7 @@ public class NewDataItem extends JDialog {
 	}
 	
 	String newType;
-	private void toChangeTheAid() {		
+	private void toChangeTheAid() {
 		new JDialog(NewDataItem.this, "Изменить карточку препарата:", true) {
 			{
 				setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -562,27 +557,23 @@ public class NewDataItem extends JDialog {
 				JScrollPane scroll = new JScrollPane(list);
 				
 				add(scroll);
-				
-//				list.addListSelectionListener(new ListSelectionListener() {
-//					@Override
-//					public void valueChanged(ListSelectionEvent e) {
-//						
-//						
-//					}
-//				});
+
 				list.addMouseListener(new MouseAdapter() {
 					@Override
 					public void mouseClicked(MouseEvent e) {
 						if (e.getClickCount() >=2) {
-//							System.out.println(SwingUtilities.isLeftMouseButton(list));
-//							if (MouseInfo.getPointerInfo().toString().equals("java.awt.PointerInfo@6aa00e9b")) {return;}
 							newType = list.getSelectedValue();
 							
 							if (newType != null && !newType.equals("")) {
 								String[] data = DataBase.getElement(newType);
+								typesBox.setSelectedItem(data[1]);
 								itemNameField.setText(newType);
 								descriptionArea.setText(data[3]);
 								picturesNameField.setText(data[4]);
+								
+								try {photo = ImageIO.read(new File(Registry.photoDir + "/" + data[1] + "/" + data[4]));
+								} catch (Exception e1) {e1.printStackTrace();}
+								rightImagePane.repaint();
 								
 //								"'modificКРС', 'modificМРС', 'modificHrs', 'modificPig', 'modificPAn', 'modificBrd', 'modificDgz', 'modificCts'
 								valueOnWeightFieldKPC.setText(data[5]);
@@ -620,13 +611,13 @@ public class NewDataItem extends JDialog {
 			}
 		}
 		
-		Out.Print(DataBase.class, Out.LEVEL.ACCENT, "Тип '" + newType + "' добавляется...");
+		Out.Print(DataBase.class, LEVEL.ACCENT, "Тип '" + newType + "' добавляется...");
 		try (Connection conn = DriverManager.getConnection("jdbc:sqlite:data\\db.db")) {
 			Statement statmt = conn.createStatement();	
 			statmt.execute("INSERT INTO 'type' ('typename') VALUES ('" + newType + "');");						
 			statmt.close();
 			
-			Out.Print(DataBase.class, Out.LEVEL.INFO, "Тип '" + newType + "' добавлен.");
+			Out.Print(DataBase.class, LEVEL.INFO, "Тип '" + newType + "' добавлен.");
 			typesBox.addItem(newType);
 			typesBox.setSelectedItem(newType);
 			new File(Registry.photoDir + "/" + newType).mkdir();

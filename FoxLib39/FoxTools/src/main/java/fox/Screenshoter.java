@@ -1,13 +1,10 @@
-package graphics;
+package fox;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Path;
 
 import javax.imageio.ImageIO;
-
-import fox.Out;
-import fox.Out.LEVEL;
 
 
 public class Screenshoter {
@@ -18,7 +15,11 @@ public class Screenshoter {
 	}
 	
 	public void saveImage(BufferedImage image, String extention, Path saveAs) throws IOException {
-		Out.Print(getClass(), LEVEL.ACCENT, "Saving the image " + saveAs + " (" + extention + ")...");
+		log("Saving the image " + saveAs + " (" + extention + ")...");
 		ImageIO.write(image, extention, saveAs.toFile());
+	}
+
+	private void log(String message) {
+		System.out.println(Screenshoter.class.getName() + " : " + message);
 	}
 }
