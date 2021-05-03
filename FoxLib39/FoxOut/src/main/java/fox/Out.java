@@ -16,28 +16,32 @@ public class Out {
 	public static enum LEVEL {DEBUG, INFO, ACCENT, WARN, ERROR, CRITICAL}
 	private static LEVEL errLevel = LEVEL.DEBUG; // уровень, от которого сообщения будут обрабатываться
 	
-	private final Charset charset = StandardCharsets.UTF_8;
-	private SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy"), fnc = new SimpleDateFormat("HH.mm.ss");
+	private final static Charset charset = StandardCharsets.UTF_8;
 	
-	private static Stack<String> messageStack = new Stack<String>();
+	private final static SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy");
+	private final static SimpleDateFormat fnc = new SimpleDateFormat("HH.mm.ss");
+	
 	private static Deque<LEVEL> typeDeque = new ArrayDeque<LEVEL>();
+	private static Stack<String> messageStack = new Stack<String>();
 	private static File HTMLdir = new File("./log/"), HTMLlog;
-	private int logCount = 0; // счетчик сообщений в логе
 	
 	private static Thread LogThread;
-	private int sleepTime = 250;
 	
-	private boolean free = true;
-	private String currentTime, currentDate, address;
+	private static boolean free = true, enabled = true, thanNextLine = false;
+
+	private static String currentDate, currentTime, address;
 	
+	private static int logCount = 0; // счетчик сообщений в логе
+	private static int sleepTime = 250;
 	private static int logsCountAllow = 10;	// сколько логов хранить по-умолчанию
-	private static boolean enabled = true;
-	private static Boolean thanNextLine = false;
+	
 	private static FoxConsole connectedFoxConsole; // возможность подключить к трассировке FoxConsole
 	
 	
- 	public Out() {
-		if (LogThread == null) {
+ 	private Out() {}
+ 	
+ 	private static void start() {
+ 		if (LogThread == null) {
 			LogThread = new Thread(new Runnable() {
 				@Override
 				public void run() {
@@ -79,9 +83,9 @@ public class Out {
 				}
 			};
 		}
-	}
+ 	}
 	
-	boolean checkFiles() {
+	private static boolean checkFiles() {
 		// Пытаемся максимум три раза создать необходимую директорию логов:
 		int tryes = 3;
 		do {
@@ -104,7 +108,7 @@ public class Out {
 			tryes--;			
 			try {
 				HTMLlog.createNewFile();
-				logFileOpen();
+				openLogFile();
 			} catch (IOException e) {
 				System.err.println("ERR: Out: checkFiles: Creating or opening \"" + HTMLlog + "\" is FAILED!");
 				e.printStackTrace();
@@ -123,14 +127,14 @@ public class Out {
 		logsCount = null;
 	}
 
-	private void logFileOpen() {
+	private static void openLogFile() {
 		try (OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(HTMLlog, true), charset)) {
 			osw.write("<!DOCTYPE html><HTML lang=\"ru\"><HEAD><meta charset=\"UTF-8\"><title>" + currentDate + "</title></HEAD><BODY>");
 		} catch (Exception e) {e.printStackTrace();}
 	}
 	
 	// вывод в файл лога:
-	synchronized void logHTML() {
+	private synchronized static void logHTML() {
 		try (OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(HTMLlog, true), charset)) {
 			currentTime = fnc.format(System.currentTimeMillis());
 			address = messageStack.pop();
@@ -172,7 +176,7 @@ public class Out {
 		for (int i = 0; i < messages.length; i++) {Print(address, level, messages[i].toString());}
 	}
 	
-	synchronized static void Print(String address, LEVEL level, String message) {
+	private synchronized static void Print(String address, LEVEL level, String message) {
 		if (level == LEVEL.CRITICAL) {throw new RuntimeException("!!! CRITICAL ERROR !!!\n" + address + ": " + message);}
 		
 		if (isEnabled()) {
@@ -193,11 +197,11 @@ public class Out {
 				case ACCENT:	resultString = "[ATTENTION]\t" + address + ": " + message;
 					break;
 				
-				case INFO:			resultString = "[INFO]\t" + address + ": " + message;
+				case INFO:		resultString = "[INFO]\t" + address + ": " + message;
 					break;
 					
 				case DEBUG: 
-				default:				resultString = "[DEBUG]\t" + address + ": " + message;
+				default:		resultString = "[DEBUG]\t" + address + ": " + message;
 			}
 			
 			if (connectedFoxConsole != null) {connectedFoxConsole.appendToConsole(resultString);}
@@ -207,7 +211,7 @@ public class Out {
 				thanNextLine = false;
 			}
 			
-			if (LogThread == null) {new Out();}
+			if (LogThread == null) {start();}
 			if (level.ordinal() >= errLevel.ordinal()) {
 				typeDeque.addFirst(level);
 				messageStack.insertElementAt(address + ": " + message, 0);
@@ -227,7 +231,7 @@ public class Out {
 	public static void setLogsCoutAllow(int _logsCountAllow) {logsCountAllow = _logsCountAllow;}
 	
 	// от какого и выше уровня обрабатывать сообщения:
-	public synchronized static void setErrorLevel(LEVEL lvl) {errLevel = lvl;}
+	public static void setErrorLevel(LEVEL lvl) {errLevel = lvl;}
 	public static LEVEL getErrorLevel() {return errLevel;}
 
 	public static boolean isEnabled() {return enabled;}
@@ -235,9 +239,8 @@ public class Out {
 		if (enabled == d) {return;}
 		enabled = d;
 		
-		if (LogThread == null || !LogThread.isAlive()) {new Out();}
+		if (LogThread == null || !LogThread.isAlive()) {start();}
 	}
-
 	
 	// подключение FoxConsole для вывода всех сообщений туда параллельно:
 	public static void connectFoxConsole(FoxConsole cons) {connectedFoxConsole = cons;}

@@ -2,6 +2,8 @@ package fox.games;
 
 
 public class FoxExperience {
+	
+	private FoxExperience() {}
 		
 	public static double getExp(int playerLVL, int aimLVL) {
 		/**

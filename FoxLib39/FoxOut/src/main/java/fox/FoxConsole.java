@@ -8,7 +8,6 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.SimpleDateFormat;
@@ -27,10 +26,8 @@ import javax.swing.border.EmptyBorder;
 
 
 @SuppressWarnings("serial")
-public class FoxConsole extends JDialog implements KeyListener {
+public class FoxConsole extends JDialog {
 	private SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
-	
-	private KeyListener kList;
 	
 	private JFrame parentFrame;
 	private JPanel upTactAndClockPane, foxConsolePanel;
@@ -44,14 +41,11 @@ public class FoxConsole extends JDialog implements KeyListener {
 	private Font f0, f1, f2;
 	
 
-	public FoxConsole(JFrame parent) {this(parent, "Console", true, null);}
+	public FoxConsole(JFrame parent) {this(parent, "Console", true);}
 	
-	public FoxConsole(JFrame parent, String consoleTitle, boolean isModal) {this(parent, consoleTitle, isModal, null);}
-	
-	public FoxConsole(JFrame parent, String consoleTitle, boolean isModal, KeyListener kList) {
+	public FoxConsole(JFrame parent, String consoleTitle, boolean isModal) {
 		super(parent, consoleTitle, isModal);
-		this.parentFrame = parent;		
-		if (kList != null) {this.kList = kList;} else {this.kList = this;}
+		this.parentFrame = parent;
 		
 		setLayout(new BorderLayout());
 		setModalExclusionType(Dialog.ModalExclusionType.NO_EXCLUDE);
@@ -72,6 +66,20 @@ public class FoxConsole extends JDialog implements KeyListener {
 		((JComponent) parentFrame.getContentPane()).getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_QUOTE, 0), "onoff");
 		((JComponent) parentFrame.getContentPane()).getActionMap().put("onoff", new AbstractAction() {
 			@Override public void actionPerformed(ActionEvent e) {visibleChanger();}
+		});
+		
+		((JComponent) inputArea).getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "send");
+		((JComponent) inputArea).getActionMap().put("send", new AbstractAction() {
+			@Override public void actionPerformed(ActionEvent e) {
+				if (!inputArea.getText().isEmpty()) {
+					consoleArea.append("\n" + inputArea.getText());
+					consoleArea.setText(consoleArea.getText().trim());
+					consoleArea.setCaretPosition(consoleArea.getText().length());
+					
+					inputArea.setText("");
+					inputArea.requestFocus();
+				}
+			}
 		});
 	}
 
@@ -132,8 +140,6 @@ public class FoxConsole extends JDialog implements KeyListener {
 				setEditable(true);
 				setFocusable(true);
 				setAutoRequestFocus(true);
-				
-				addKeyListener(kList);
 			}
 		};
 		
@@ -201,32 +207,4 @@ public class FoxConsole extends JDialog implements KeyListener {
 	public void setClockFont(Font f0) {this.f0 = f0;}
 	public void setOutputAreaFont(Font f1) {this.f1 = f1;}
 	public void setInputAreaFont(Font f2) {this.f2 = f2;}
-	
-	
-	@Override
-	public void keyPressed(KeyEvent key) {
-		if (key.getKeyCode() == KeyEvent.VK_ENTER) {
-			if (!inputArea.getText().isEmpty()) {
-				consoleArea.append("\n" + inputArea.getText());
-				consoleArea.setText(consoleArea.getText().trim());
-				consoleArea.setCaretPosition(consoleArea.getText().length());
-				
-				inputArea.setText("");
-				inputArea.requestFocus();
-			}
-		}
-	}
-
-	@Override
-	public void keyReleased(KeyEvent e) {
-		if (e.getKeyCode() == KeyEvent.VK_BACK_QUOTE) {
-			if (isVisible()) {dispose();} else {setFocusInArea();}
-		}
-	}
-
-	public void keyTyped(KeyEvent e) {
-		if (e.getKeyCode() == KeyEvent.VK_BACK_QUOTE) {
-			if (isVisible()) {dispose();} else {setFocusInArea();}
-		}
-	}
 }

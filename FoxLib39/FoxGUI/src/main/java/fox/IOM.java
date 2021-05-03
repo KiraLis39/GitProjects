@@ -18,10 +18,16 @@ import java.util.Properties;
 
 public class IOM {
 	public static enum HEADERS {REGISTRY, CONFIG, USER_SAVE, LAST_USER, USER_LIST, SECURE, TEMP} // несколько готовых примеров (можно задавать и свои, конечно)
-	private static ArrayList<Properties> PropsArray = new ArrayList<Properties>(HEADERS.values().length); // массив активных хранилищ
-	private static Charset codec = StandardCharsets.UTF_8;
+	
+	private final static ArrayList<Properties> PropsArray = new ArrayList<Properties>(HEADERS.values().length); // массив активных хранилищ
+	private final static Charset codec = StandardCharsets.UTF_8;
+	
 	private static Boolean consoleOut = false; // трассировка в лог
 	private static String DEFAULT_EMPTY_STRING = "NA"; // чем будет значение при его отсутствии\создании без указания значения
+	
+	
+	private IOM() {}
+	
 	
 	// подключение нового хранилища:
 	public synchronized static void add(Object propertiName, File PropertiFile) {
@@ -30,12 +36,12 @@ public class IOM {
 		// проверяем не идет ли повторная попытка создания такого же проперчеса...
 		for (int i = 0; i < PropsArray.size(); i++) {
 			if (PropsArray.get(i).containsKey("propName") && PropsArray.get(i).getProperty("propName").equals(name)) {
-				debugOut("Такой экземпляр уже есть! Перезапись...");
+				log("Такой экземпляр уже есть! Перезапись...");
 				PropsArray.remove(i);
 			}
 		}
 
-		debugOut("Создание проперчеса " + name + " от файла " + PropertiFile);
+		log("Создание проперчеса " + name + " от файла " + PropertiFile);
 		Properties tmp = new Properties(4);
 
 		// проверяем есть ли файл для чтения\записи...
@@ -49,8 +55,8 @@ public class IOM {
 				PropsArray.add(tmp);
 	
 				save(name);
-				debugOut("Cоздание нового потока: " + name + " завершено.");
-			} catch (Exception ex) {debugOut("Проблема при чтении файла последнего пользователя lastUserFile!");}
+				log("Cоздание нового потока: " + name + " завершено.");
+			} catch (Exception ex) {log("Проблема при чтении файла последнего пользователя lastUserFile!");}
 		}
 	}
 	
@@ -64,7 +70,7 @@ public class IOM {
 			for (int i = 0; i < PropsArray.size(); i++) {
 				if (PropsArray.get(i).containsKey("propName")) {
 					if (PropsArray.get(i).getProperty("propName").equals(name)) {
-						debugOut("Запись в проперчес " + name + " параметра " + String.valueOf(value) + "' (" + value.getClass().getTypeName() + ").");
+						log("Запись в проперчес " + name + " параметра " + String.valueOf(value) + "' (" + value.getClass().getTypeName() + ").");
 						if (PropsArray.get(i).containsKey(parameter)) {PropsArray.get(i).setProperty(parameter, String.valueOf(value));
 						} else {PropsArray.get(i).putIfAbsent(parameter, String.valueOf(value));}
 						return;
@@ -85,7 +91,7 @@ public class IOM {
 		} else {
 			for (int i = 0; i < PropsArray.size(); i++) {
 				if (!PropsArray.get(i).containsKey("propName")) {
-					debugOut("Каким-то образом проперчес " + PropsArray.get(i).toString() + " не имеет ключа с именем.");
+					log("Каким-то образом проперчес " + PropsArray.get(i).toString() + " не имеет ключа с именем.");
 					continue;
 				}
 				
@@ -110,14 +116,14 @@ public class IOM {
 		
 		try {
 			int ind = getPropIndex(propertiName.toString());
-			debugOut("Конфигурация найдена. Чтение флага " + key.toString() + "...");				
+			log("Конфигурация найдена. Чтение флага " + key.toString() + "...");				
 			PropsArray.get(ind).putIfAbsent(key.toString(), "false");
 			
-			debugOut("Возврат флага " + PropsArray.get(ind).getProperty(key.toString()) + ".");				
+			log("Возврат флага " + PropsArray.get(ind).getProperty(key.toString()) + ".");				
 			return Boolean.valueOf(PropsArray.get(ind).getProperty(key.toString()));
 		} catch (Exception e) {
 			e.printStackTrace();
-			debugOut("Параметр '" + key + "' не является типом Boolean. (" + key.getClass() + ")");
+			log("Параметр '" + key + "' не является типом Boolean. (" + key.getClass() + ")");
 			return false;
 		}
 	}
@@ -138,7 +144,7 @@ public class IOM {
 			return Double.parseDouble(PropsArray.get(ind).getProperty(key.toString()));
 		} catch (Exception e) {
 			e.printStackTrace();
-			debugOut("Параметр '" + key + "' не является типом Double. (" + key.getClass() + ")" + (ind == -1 ? "" : " (value: " + PropsArray.get(ind).getProperty(key.toString()) + ")."));
+			log("Параметр '" + key + "' не является типом Double. (" + key.getClass() + ")" + (ind == -1 ? "" : " (value: " + PropsArray.get(ind).getProperty(key.toString()) + ")."));
 		}
 		
 		return null;
@@ -175,7 +181,7 @@ public class IOM {
 			return Integer.parseInt(tmp.getProperty(key.toString()));
 		} catch (Exception e) {
 			e.printStackTrace();
-			debugOut("Параметр '" + key + "' не является типом Integer. (" + key.getClass() + ")");
+			log("Параметр '" + key + "' не является типом Integer. (" + key.getClass() + ")");
 		}
 		
 		return null;
@@ -188,7 +194,7 @@ public class IOM {
 			for (int i = 0; i < PropsArray.size(); i++) {
 				if (PropsArray.get(i).containsKey("propName")) {
 					if (PropsArray.get(i).getProperty("propName").equals(propertiName.toString())) {
-						debugOut("Удаление из проперчес " + propertiName.toString() + " параметра " + key + "'.");
+						log("Удаление из проперчес " + propertiName.toString() + " параметра " + key + "'.");
 						propCount = i;
 						break;
 					}
@@ -208,7 +214,7 @@ public class IOM {
 			if (properties.get("propName").equals(propertiName.toString())) {
 				try (OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(new File(properties.getProperty("propFile")), false), codec)) {
 					properties.store(osw, "IOM_SAVE");
-					debugOut("Сохранение " + properties.getProperty("propFile") + " завершено!");
+					log("Сохранение " + properties.getProperty("propFile") + " завершено!");
 					return true;
 				} catch (IOException e) {
 					showLoadStreamErr(properties);
@@ -218,12 +224,12 @@ public class IOM {
 			}
 		}
 		
-		debugOut("Не найден поток " + propertiName.toString() + ".");
+		log("Не найден поток " + propertiName.toString() + ".");
 		return false;
 	}
 	// сохранить все активные хранилища на диск:
 	public synchronized static void saveAll() {
-		debugOut("Каскадное сохранение всех файлов...");
+		log("Каскадное сохранение всех файлов...");
 		for (Properties properties : PropsArray) {save(properties);}
 	}
 
@@ -232,11 +238,11 @@ public class IOM {
 		for (Properties properties : PropsArray) {
 			if (properties.get("propName").equals(propertiName.toString())) {
 				try (InputStreamReader ISR = new InputStreamReader(new FileInputStream(new File(properties.getProperty("propFile"))), codec)) {
-					debugOut("Загрузка файла " + propertiName.toString() + " в поток " + properties.getProperty("propName"));
+					log("Загрузка файла " + propertiName.toString() + " в поток " + properties.getProperty("propName"));
 					properties.load(ISR);
 					return true;
 				} catch (IOException e) {
-					debugOut("Проблема с загрузкой потока " + properties.getProperty("propName") + "!");
+					log("Проблема с загрузкой потока " + properties.getProperty("propName") + "!");
 					e.printStackTrace();
 					break;
 				}				
@@ -247,15 +253,15 @@ public class IOM {
 	}
 	// загрузить все хранилища из файлов на диске:
 	public synchronized static void loadAll() {
-		debugOut("Каскадная загрузка всех файлов (перезагрузка проперчесов)...");
+		log("Каскадная загрузка всех файлов (перезагрузка проперчесов)...");
 		for (Properties properties : PropsArray) {load(properties);}
 	}
 
 	
-	private static void showNotExistsErr(Object data) {debugOut("Не найден поток '" + data + "'.");}
-	private static void showWithoutNameErr(Object data) {debugOut("Запись в проперчес имени невозможна: " + data);}
-	private static void showWithoutKeyErr(Object data) {debugOut("Запись в проперчес ключа невозможна: " + data);}
-	private static void showLoadStreamErr(Object data) {debugOut("Проблема с выгрузкой потока " + data + " в файл!");}
+	private static void showNotExistsErr(Object data) {log("Не найден поток '" + data + "'.");}
+	private static void showWithoutNameErr(Object data) {log("Запись в проперчес имени невозможна: " + data);}
+	private static void showWithoutKeyErr(Object data) {log("Запись в проперчес ключа невозможна: " + data);}
+	private static void showLoadStreamErr(Object data) {log("Проблема с выгрузкой потока " + data + " в файл!");}
 	
 	// существует ли активное хранилище:
 	public synchronized static Boolean existProp(String propertiName) {
@@ -292,7 +298,7 @@ public class IOM {
 	private static boolean testFileExist(File file) {
 		Path parentDir = Paths.get(file.getParentFile().toURI());
 		while (Files.notExists(parentDir)) {
-			debugOut("Попытка создания директории '" + parentDir + "'...");
+			log("Попытка создания директории '" + parentDir + "'...");
 			
 			try {Files.createDirectory(parentDir);
 			} catch (IOException i0) {
@@ -303,7 +309,7 @@ public class IOM {
 		
 		Path self = Paths.get(file.toURI());
 		while (Files.notExists(self)) {
-			debugOut("Попытка создания файла '" + file + "'...");
+			log("Попытка создания файла '" + file + "'...");
 			
 			try {Files.createFile(self);
 			} catch (IOException e1) {
@@ -322,7 +328,7 @@ public class IOM {
 	public static void setConsoleOutOn(Boolean onOff) {consoleOut = onOff;}
 	
 	// вывод событий в лог:
-	private static void debugOut(String message) {
+	private static void log(String message) {
 		if (consoleOut) {System.out.println(IOM.class.getName() + ": " + message);}
 	}
 }

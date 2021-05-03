@@ -7,6 +7,8 @@ import java.awt.geom.Point2D;
 public class FoxPercentScaler {
 	public static enum CONVERT_TYPE {PERCENT_TO_POINT, POINT_TO_PERCENT}
 	
+	private FoxPercentScaler() {}
+	
 // FIND DIFFERENCE:
 	//	Принимает старую длину вектора и новую.
 	// Возвращает процент изменения double от 0 до 1.

@@ -8,6 +8,8 @@ public class FoxRender {
 //	image.getScaledInstance(1024, 768, 2);
 //	g2D.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_ATOP, 0.0f));
 	
+	private FoxRender() {}
+	
 	public static Graphics2D setLowRender(Graphics2D g2D) {
 		g2D.setRenderingHints(null);
 		

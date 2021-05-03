@@ -23,17 +23,22 @@ import render.FoxRender;
 
 
 public class ResManager {
-	private static Map<String, BufferedImage> imageBuffer = Collections.synchronizedMap(new LinkedHashMap<String, BufferedImage> ());
-	private static Map<String, File> resourseLinksMap = Collections.synchronizedMap(new LinkedHashMap<String, File> ());
-	private static Map<String, byte[]> cash = Collections.synchronizedMap(new LinkedHashMap<String, byte[]> ());
+	private final static Map<String, BufferedImage> imageBuffer = Collections.synchronizedMap(new LinkedHashMap<String, BufferedImage> ());
+	private final static Map<String, File> resourseLinksMap = Collections.synchronizedMap(new LinkedHashMap<String, File> ());
+	private final static Map<String, byte[]> cash = Collections.synchronizedMap(new LinkedHashMap<String, byte[]> ());
 	
-	private static int HQ = 0, MIN_ELEMENTS_CASH_COUNT_TO_CLEARING = 128, MIN_ELEMENTS_BIMAGE_COUNT_TO_CLEARING = 64;
 	private final static long MAX_MEMORY = Runtime.getRuntime().maxMemory() - 1L;
 	private static long USED_MEMORY, MAX_LOADING;
 	
+	private static int HQ = 0, MIN_ELEMENTS_CASH_COUNT_TO_CLEARING = 128, MIN_ELEMENTS_BIMAGE_COUNT_TO_CLEARING = 64;
+	
 	private static float memGCTrigger = 0.75f;
 	
-	private static Boolean logEnable = true;
+	private static boolean logEnable = true;
+	
+	
+	private ResManager() {}
+	
 	
 	// опасно заливать память тоннами мусора. Не бойся, мемориКонтроль спасёт тебя =^_^=:
 	public static void memoryControl() {
@@ -231,9 +236,6 @@ public class ResManager {
 	public synchronized static Set<Entry<String, File>> getLinksEntrySet() {return resourseLinksMap.entrySet();}	
 
 	
-	private static void log(String message) {System.out.println(message);}
-	
-	
 	public synchronized static void clearImages() {imageBuffer.clear();}
 	public synchronized static void clearAll() {
 		cash.clear();
@@ -255,8 +257,9 @@ public class ResManager {
 	public static Boolean isDebugOn() {return logEnable;}
 	public static void setDebugOn(Boolean enabled) {logEnable = enabled;}
 	
-	
 	public static void setMemoryLoadFactor(float memGCTrigger) {
 		ResManager.memGCTrigger = memGCTrigger;
 	}
+	
+	private static void log(String message) {System.out.println(message);}
 }

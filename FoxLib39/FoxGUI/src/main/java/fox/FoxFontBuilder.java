@@ -5,6 +5,7 @@ import java.awt.Graphics;
 import java.awt.GraphicsEnvironment;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
+import java.nio.file.Files;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -22,19 +23,20 @@ public class FoxFontBuilder {
 	private static List<String> fArr = new LinkedList<String>(); // набор шрифтов по-умолчанию.
 	private static File fontsDirectory; // папка с дополнительными шрифтами TRUETYPE
 		
-
-	public FoxFontBuilder(File fontsDir) {
-		if (fontsDir != null) {fontsDirectory = fontsDir;}
-		// шрифты, доступные по-умолчанию:
+	static {
 		fArr.add(0, "Comic Sans MS");			fArr.add(1, "Monotype Corsiva");
-		fArr.add(2, "bahnschrift");					fArr.add(3, "Candara");
+		fArr.add(2, "bahnschrift");				fArr.add(3, "Candara");
 		fArr.add(4, "Harlow Solid Italic");		fArr.add(5, "Corbel");
-		fArr.add(6, "Georgia");						fArr.add(7, "Arial");
-		fArr.add(8, "Arial Narrow");				fArr.add(9, "Segoe Script");
-		fArr.add(10, "Cambria");						fArr.add(11, "Constantia");
-		fArr.add(12, "Consolas");					fArr.add(13, "Papyrus");
+		fArr.add(6, "Georgia");					fArr.add(7, "Arial");
+		fArr.add(8, "Arial Narrow");			fArr.add(9, "Segoe Script");
+		fArr.add(10, "Cambria");				fArr.add(11, "Constantia");
+		fArr.add(12, "Consolas");				fArr.add(13, "Papyrus");
 		fArr.add(14, "Leelawadee UI");			fArr.add(15, "Segoe UI Symbol");
 		fArr.add(16, "Times New Roman");
+	}
+
+	public FoxFontBuilder(File customFontsDir) {
+		if (customFontsDir != null && Files.exists(customFontsDir.toPath())) {fontsDirectory = customFontsDir;}
 	}
 
 	// выбор шрифта:
@@ -133,9 +135,6 @@ public class FoxFontBuilder {
 	public static File getFontsDirectory() {return fontsDirectory;}
 	public static void setFontsDirectory(File _fontsDirectory) {fontsDirectory = _fontsDirectory;}
 
-	private static void log(String message) {
-		System.out.println(FoxFontBuilder.class.getName() + ": " + message);
-	}
 	
 	public static Font[] getSystemFonts() {
 		return GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();		
@@ -151,5 +150,10 @@ public class FoxFontBuilder {
 //		InputStream stream = ClassLoader.getSystemClassLoader().getResourceAsStream("roboto-bold.ttf");
 //		Font font = Font.createFont(Font.TRUETYPE_FONT, stream).deriveFont(48f);
 //		Font font = Font.createFont(Font.TRUETYPE_FONT, new File("Fonts\\custom_font.ttf")).deriveFont(12f);
+	}
+
+	
+	private static void log(String message) {
+		System.out.println(FoxFontBuilder.class.getName() + ": " + message);
 	}
 }

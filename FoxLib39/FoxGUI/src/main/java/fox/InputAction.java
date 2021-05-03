@@ -33,13 +33,13 @@ public class InputAction {
 	
 	public static Set<Entry<String, JComponent>> getEntrySet() {return compMap.entrySet();}
 	
-	public static void remove(String componentMapName) {
-		if (compMap.containsKey(componentMapName)) {
-			compMap.remove(componentMapName);
+	public static void remove(String componentName) throws Exception {
+		if (compMap.containsKey(componentName)) {
+			compMap.remove(componentName);
 			return;
 		}
 		
-		throw new RuntimeException("InputAction: Error!\nMap of InputAction has not contents component '" + componentMapName + "'.");
+		throw new Exception("InputAction: Error!\nMap of InputAction has not contents component '" + componentName + "'.");
 	}
 	
 	public static void clearAll() {compMap.clear();}

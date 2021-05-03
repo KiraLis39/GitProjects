@@ -10,9 +10,10 @@ import com.sun.management.OperatingSystemMXBean;
 
 
 public class SystemInfo {	
+	private final static OperatingSystemMXBean os = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
 	private static StringBuilder sb;
-	private static OperatingSystemMXBean os = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
 	
+	private SystemInfo() {}
 	
 	public static String getAllSystemParameters() {
 		sb = new StringBuilder();

@@ -8,8 +8,10 @@ import java.util.Map;
 
 
 public class FoxSpritesCombiner {
-	private static Map<String, BufferedImage[]> sptitesMap = new LinkedHashMap<String, BufferedImage[]>();
+	private final static Map<String, BufferedImage[]> sptitesMap = new LinkedHashMap<String, BufferedImage[]>();
 		
+	private FoxSpritesCombiner() {}
+	
 	public static BufferedImage[] addSpritelist(String spriteListName, BufferedImage image, int wCount, int hCount) {
 		BufferedImage[] result = null;
 		
@@ -88,8 +90,8 @@ public class FoxSpritesCombiner {
 		g2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		g2D.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_NORMALIZE);
 		g2D.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-		g2D.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-		g2D.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_DEFAULT);
+		g2D.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+		g2D.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 	}
 	
 	private static void log(String message) {

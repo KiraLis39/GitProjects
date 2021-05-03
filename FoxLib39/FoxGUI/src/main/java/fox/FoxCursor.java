@@ -16,6 +16,8 @@ import javax.swing.ImageIcon;
 
 
 public class FoxCursor {
+	private FoxCursor() {}
+	
 	public static Cursor createCursor(Path imagePath) throws IOException {
 		BufferedImage ico = ImageIO.read(imagePath.toFile());
 		if (ico == null) {

@@ -11,6 +11,11 @@ public class VideoMonitor {
 	private static GraphicsDevice device = environment.getDefaultScreenDevice();
 	private static GraphicsConfiguration gconf = device.getDefaultConfiguration();
 
+	public VideoMonitor() {
+		environment = GraphicsEnvironment.getLocalGraphicsEnvironment();
+		device = environment.getDefaultScreenDevice();
+		gconf = device.getDefaultConfiguration();
+	}
 	
 	public static DisplayMode getDisplayMode() {
 		return device.getDisplayMode();
