@@ -230,7 +230,7 @@ public class IOM {
 	// сохранить все активные хранилища на диск:
 	public synchronized static void saveAll() {
 		log("Каскадное сохранение всех файлов...");
-		for (Properties properties : PropsArray) {save(properties);}
+		for (Properties properties : PropsArray) {save(properties.get("propName"));}
 	}
 
 	// загрузить конкретное хранилище из файла на диске:
